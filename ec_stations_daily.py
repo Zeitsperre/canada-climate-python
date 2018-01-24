@@ -152,16 +152,54 @@ def calcThat(match, plot):
             except TypeError:
                 continue
     
-    def outpMinT(dataframe):
-        pass
+    def outPeriod(dataframe):
+        min_date = np.datetime64(min(dataframe['Date/Time']))
+        max_date = np.datetime64(max(dataframe['Date/Time']))
+        year = (dataframe['Year'][0])
+        period = np.arange(min_date, max_date+1)
+        return year, period        
+        
+    def out_temp(dataframe):
+        year, period = outPeriod(dataframe)    
+        
+        max_temp_raw = np.array(dataframe['Max Temp (C)'])
+        max_temp_masked = np.ma.masked_where(max_temp_raw == '', max_temp_raw)    
+        max_temp = np.array([float(val) for val in max_temp_masked])
+        
+        min_temp_raw = np.array(dataframe['Min Temp (C)'])
+        min_temp_masked = np.ma.masked_where(min_temp_raw == '', min_temp_raw)    
+        min_temp = np.array([float(val) for val in min_temp_masked])
+        
+        x = np.arange(0.,len(period))
+        y1 = min_temp
+        y2 = max_temp
+        emint, emaxt = min(y1), max(y2)  
+        y1_title = 'Extreme Min Temp: {}'.format(emint)
+        y2_title = 'Extreme Max Temp: {}'.format(emaxt)
+      
+        return x, y1, y2, year, y1_title, y2_title 
     
-    def outMaxT(dataframe):
-        pass
+    def out_precip(dataframe):
+        year, period = outPeriod(dataframe)    
+        
+        tot_ppt_raw = np.array(dataframe['Total Precip (mm)'])
+        tot_ppt_masked = np.ma.masked_where(tot_ppt_raw == '', tot_ppt_raw)    
+        tot_precip = np.array([float(val) for val in tot_ppt_masked])
+        
+        snow_raw = np.array(dataframe['Snow on Grnd (cm)'])
+        snow_masked = np.ma.masked_where(snow_raw == '', snow_raw)    
+        snow = np.array([float(val) for val in snow_masked])
+        
+        x = np.arange(0.,len(period))
+        y1 = tot_precip
+        y2 = snow
+        sum_ppt, max_snow = np.nansum(y1), max(y2)  
+        y1_title = 'Total Annual Precipitation: {} mm'.format(sum_ppt)
+        y2_title = 'Day with Most Snow on Ground: {} cm'.format(max_snow)
+      
+        return x, y1, y2, year, y1_title, y2_title 
     
-    def outPpt(dataframe):
-        pass
-    
-    def outDD10(dataframe, plot):
+    def out_DD10(dataframe):
         '''
         Calculates andformats value indicators for degree-days
         with base 10 Celsius
@@ -172,10 +210,7 @@ def calcThat(match, plot):
                 dd = 0
             return dd
         
-        min_date = np.datetime64(min(dataframe['Date/Time']))
-        max_date = np.datetime64(max(dataframe['Date/Time']))
-        year = (dataframe['Year'][0])
-        period = np.arange(min_date, max_date+1)
+        year, period = outPeriod(dataframe)
         
         max_temp_raw = np.array(dataframe['Max Temp (C)'])
         max_temp_masked = np.ma.masked_where(max_temp_raw == '', max_temp_raw)    
@@ -186,21 +221,32 @@ def calcThat(match, plot):
         min_temp = np.array([float(val) for val in min_temp_masked])
 
         x = np.arange(0.,len(period))
-        y = map(degreeDays, min_temp, max_temp)
-        max_daily, sum_daily = max(y), np.nansum(y)
-        max_daily_title = 'Maximum Daily Value: {}'.format(max_daily)
-        sum_daily_title = 'Sum of Daily Values: {}'.format(sum_daily)
+        y1 = map(degreeDays, min_temp, max_temp)
+        y2 = None
+        max_daily, sum_daily = max(y1), np.nansum(y1)
+        y1_title = 'Maximum Daily Value: {}'.format(max_daily)
+        y2_title = 'Sum of Daily Values: {}'.format(sum_daily)
       
-        return x, y, year, max_daily_title, sum_daily_title 
- 
-    dd10 = outDD10(location, plot) 
-    return dd10
+        return x, y1, y2, year, y1_title, y2_title 
+  
+    if plot == 'ax0':
+        temp = out_temp(location) 
+        return temp
+    elif plot == 'ax1':
+        precip = out_precip(location)
+        return precip
+    elif plot == 'ax2':
+        dd10 = out_DD10(location)
+        return dd10
+    else:
+        return 'Gonna need more than that'
     
-def plotThat(plot, x, va, year, maxtitle, sumtitle):
+def plotThat(plot, x, y1, y2, year, title1, title2):
     '''
     Using plot names, axes, year and titles, creates a sublot
     '''
-    
+#            for count in match:
+#                ax = 'ax'+str(count)    
 #    fig, ax = plt.subplots(plot,1)
 #    
 #    plot.plot(x, va, 'o')
@@ -213,8 +259,6 @@ def plotThat(plot, x, va, year, maxtitle, sumtitle):
 #    plt.show()    
     
     pass
-    
-    
     
 def main():
     '''
@@ -229,7 +273,7 @@ def main():
         for f in fnames:
             place = placeThat(f)
             locations.append(place)
-        print len(fnames), 'stations gathered'
+        print len(fnames), 'stations gathered\n'
     else:
         place = placeThat(fnames[0])
         locations.append(place)
@@ -241,23 +285,24 @@ def main():
         locations[count].update(datum)
     
     matches = matchLocations(locations)
-
-#    for match in matches:
-#        if match >1:
-#            plots = len(match)
-#            ax = []
-#            for count in match:
-#                ax = 'ax'+str(count)
-#
-#            for count, plots in enumerate(ax):
-#                plot = 'ax'+str(count)
-#                
-#                calcThat(match[count], plot)
-#        else:
-#            pass
-#    
-#    plt.show()    
-#    
+    for match in matches:
+        if len(match) > 1:
+            print 'Multi-Year Set Found; Matched as follows:'
+            for count, station in enumerate(match):
+                plot = 'ax'+str(count)                
+                calcThat(station, plot)
+                print station['Station Name'], station['Year'][0]
+        elif len(match) == 1:
+            print 'Single Year Found:'
+            for count, run in enumerate(range(3)):
+                plot = 'ax'+str(count)                
+                analysis = calcThat(match[0], plot)
+                print analysis
+            print match[0]['Station Name'], match[0]['Year'][0]
+        else: 
+            print 'This should never happen.'
+            
+    
     return None
 
 if __name__ == "__main__":
