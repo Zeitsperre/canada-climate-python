@@ -9,6 +9,7 @@ import sys
 import codecs
 import unicodecsv as csv
 import matplotlib.pyplot as plt
+import scipy.optimize as sc
 import numpy as np
 import pdb
 
@@ -177,10 +178,12 @@ def calc_that(match, plot):
         y1 = min_temp
         y2 = max_temp
         emint, emaxt = min(y1), max(y2)
+        title = 'Temperature'
+        label = 'Degrees Celsius'
         y1_title = 'Extreme Min Temp: {}'.format(emint)
         y2_title = 'Extreme Max Temp: {}'.format(emaxt)
 
-        return x, y1, y2, year, y1_title, y2_title
+        return x, y1, y2, year, title, label, y1_title, y2_title
 
     def out_precip(dataframe):
         year, period = out_period(dataframe)
@@ -197,10 +200,12 @@ def calc_that(match, plot):
         y1 = tot_precip
         y2 = snow
         sum_ppt, max_snow = np.nansum(y1), max(y2)
+        title = 'Precipitation'
+        label = 'Precipitation (mm)'
         y1_title = 'Total Annual Precipitation: {} mm'.format(sum_ppt)
         y2_title = 'Day with Most Snow on Ground: {} cm'.format(max_snow)
 
-        return x, y1, y2, year, y1_title, y2_title
+        return x, y1, y2, year, title, label, y1_title, y2_title
 
     def out_dd10(dataframe):
         """
@@ -228,45 +233,58 @@ def calc_that(match, plot):
         y1 = map(degree_days, min_temp, max_temp)
         y2 = None
         max_daily, sum_daily = max(y1), np.nansum(y1)
+        title = 'Degree-Days Above 10 Celsius'
+        label = 'DD > 10 Celsius'
         y1_title = 'Maximum Daily Value: {}'.format(max_daily)
         y2_title = 'Sum of Daily Values: {}'.format(sum_daily)
 
-        return x, y1, y2, year, y1_title, y2_title
+        return x, y1, y2, year, title, label, y1_title, y2_title
 
-    if plot == 'ax0':
+    if plot == 0:
         temp = out_temp(location)
         return temp
-    elif plot == 'ax1':
+    elif plot == 1:
         precip = out_precip(location)
         return precip
-    elif plot == 'ax2':
+    elif plot == 2:
         dd10 = out_dd10(location)
         return dd10
     else:
         return 'Gonna need more than that'
 
 
-def plot_that(plot, x, y1, y2, year, title1, title2):
+def plot_that(analysis, axarr, plot):
     """
     Using plot names, axes, year and titles, creates a sublot
     """
-    #            for count in match:
-    #                ax = 'ax'+str(count)
-    #    fig, ax = plt.subplots(plot,1)
-    #
-    #    plot.plot(x, va, 'o')
-    #    plot.title('Degree Days (Base 10C) for year {}'.format(year))
-    #    plot.xlabel('Day of Year')
-    #    plot.ylabel('Degree-Days (Base 10C)')
-    #
-    #    plot.annotate(max_daily_title, xy=(30, max_daily))
-    #    plot.annotate(sum_daily_title, xy=(200, max_daily))
-    #    plt.show()
+        
+    try:
+        x, y1, y2, year, title, label, y1_title, y2_title = analysis
+        
+        if plot == 0:
+            c = 'firebrick'
+        elif plot == 1:
+            c = 'mediumblue'
+        elif plot == 2:
+            c = 'chartreuse'
+        else:
+            c = 'darkviolet'
+        
+        title = title + ' in ' + year
+        
+        axarr[plot].plot(x, y1, 'o', color = c)
+        axarr[plot].set_title(title)
+        axarr[plot].set_xlim(min(x), max(x))
+        axarr[plot].set_ylabel(label)
+        axarr[plot].grid()
+                
+        return None
 
-    pass
+    except TypeError:
+        return 'That didn\'t work.'
 
 
-def main():
+def daily_stations():
     """
     The main script that calls other methods; Odd calls and methods that are
     yet to be integrated are placed here to ensure script methods can be run to
@@ -293,20 +311,33 @@ def main():
     for match in matches:
         if len(match) > 1:
             print 'Multi-Year Set Found; Matched as follows:'
-            for count, station in enumerate(match):
-                plot = 'ax' + str(count)
-                calc_that(station, plot)
-                print station['Station Name'], station['Year'][0]
+            for station in match:
+                print station['Station Name'] + ' ID ' + station['Climate Identifier'] + ' in ' + station['Year'][0]   
+            for plot in range(3):
+                f, axarr = plt.subplots(len(match), 1, sharex=True)
+                for subplot, station in enumerate(match):
+                    analysis = calc_that(station, plot)
+                    plot_that(analysis, axarr, subplot)
+                f.text(0.5, 0.04, 'Day of Year', ha = 'center', va = 'center')
+                stationplace = match[0]['Station Name'] + ' Station'
+                f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
+        
         elif len(match) == 1:
-            print 'Single Year Found:'
-            for count, run in enumerate(range(3)):
-                plot = 'ax' + str(count)
+            print 'Single Year Station Found:'
+            print match[0]['Station Name'] + ' ID ' + match[0]['Climate Identifier'] + ' in ' + match[0]['Year'][0]
+            f, axarr = plt.subplots(3, 1, sharex=True)
+            for plot in range(3):
                 analysis = calc_that(match[0], plot)
-                print analysis
-            print match[0]['Station Name'], match[0]['Year'][0]
+                plot_that(analysis, axarr, plot)
+            f.subplots_adjust(hspace=0.25)
+            f.text(0.5, 0.04, 'Day of Year', ha = 'center', va = 'center')
+            stationplace = match[0]['Station Name'] + ' Station'
+            f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
         else:
             print 'This should never happen.'
-
+               
+        plt.show()
+    
     return None
 
 
@@ -314,4 +345,4 @@ if __name__ == "__main__":
     '''
     For debugging purposes.
     '''
-    main()
+    daily_stations()
