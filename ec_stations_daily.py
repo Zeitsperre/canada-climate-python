@@ -9,7 +9,6 @@ import sys
 import codecs
 import unicodecsv as csv
 import matplotlib.pyplot as plt
-#import scipy.optimize as sc
 import numpy as np
 import pdb
 
@@ -80,7 +79,7 @@ def place_that(name):
     except ValueError:
         raise Exception("Not a valid station CSV. \
             Verify that CSV holds Environment Canada station data.")
-
+        pass
 
 def grab_that(station):
     """
@@ -166,7 +165,7 @@ def calc_that(match, plot):
         min_date = np.datetime64(min(dataframe['Date/Time']))
         max_date = np.datetime64(max(dataframe['Date/Time']))
         year = (dataframe['Year'][0])
-        period = np.arange(min_date+1, max_date+2)
+        period = np.arange(min_date, max_date)
         return year, period
 
     def out_temp(dataframe):
@@ -178,21 +177,23 @@ def calc_that(match, plot):
         max_temp_raw = np.array(dataframe['Max Temp (C)'])
         max_temp_masked = np.ma.masked_where(max_temp_raw == '', max_temp_raw)
         max_temp = np.array([float(val) for val in max_temp_masked])
+        max_temp = np.ma.masked_where(np.isnan(max_temp), max_temp)
 
         min_temp_raw = np.array(dataframe['Min Temp (C)'])
         min_temp_masked = np.ma.masked_where(min_temp_raw == '', min_temp_raw)
         min_temp = np.array([float(val) for val in min_temp_masked])
+        min_temp = np.ma.masked_where(np.isnan(min_temp), min_temp)
 
-        x = np.arange(0., len(period))
+        x = np.arange(1, len(period)+2)
         y1 = min_temp
         y2 = max_temp
-        emint, emaxt = min(y1), max(y2)
+        emint, emaxt = y1.min(), y2.max()
         title = 'Temperature'
         y1_label = 'Degrees Celsius'
         y2_label = None
         y1_title = 'Extreme Min Temp: {}'.format(emint)
         y2_title = 'Extreme Max Temp: {}'.format(emaxt)
-
+        
         return x, y1, y2, year, title, y1_label, y2_label, y1_title, y2_title
 
     def out_precip(dataframe):
@@ -201,18 +202,22 @@ def calc_that(match, plot):
         """
         year, period = out_period(dataframe)
 
-        tot_ppt_raw = np.array(dataframe['Total Precip (mm)'])
+        tot_ppt_raw = np.ma.array(dataframe['Total Precip (mm)'])
         tot_ppt_masked = np.ma.masked_where(tot_ppt_raw == '', tot_ppt_raw)
+        tot_ppt_masked = np.ma.masked_where(tot_ppt_raw == 'M', tot_ppt_masked)
         tot_precip = np.array([float(val) for val in tot_ppt_masked])
-
-        snow_raw = np.array(dataframe['Snow on Grnd (cm)'])
+        tot_precip = np.ma.masked_where(np.isnan(tot_precip), tot_precip)
+ 
+        snow_raw = np.ma.array(dataframe['Snow on Grnd (cm)'])
         snow_masked = np.ma.masked_where(snow_raw == '', snow_raw)
+        snow_masked = np.ma.masked_where(snow_raw == 'M', snow_masked)
         snow = np.array([float(val) for val in snow_masked])
+        snow = np.ma.masked_where(np.isnan(snow), snow)
 
-        x = np.arange(0., len(period))
+        x = np.arange(1, len(period)+2)
         y1 = snow
         y2 = tot_precip
-        sum_ppt, max_snow = np.nansum(y1), max(y2)
+        max_snow, sum_ppt = y1.max(), np.nansum(y2)
         title = 'Precipitation and Snow on Ground'
         y1_label = 'Snow on Ground (cm)'
         y2_label = 'Precipitation (mm)'
@@ -229,8 +234,7 @@ def calc_that(match, plot):
         def degree_days(low, high):
             #This may need to be revised to constrict dates to growing season.
             dd = (((low + high) - 10) / 2)
-            if dd < 0:
-                dd = 0
+            dd[np.where(dd<0)] = 0
             return dd
 
         year, period = out_period(dataframe)
@@ -238,15 +242,17 @@ def calc_that(match, plot):
         max_temp_raw = np.array(dataframe['Max Temp (C)'])
         max_temp_masked = np.ma.masked_where(max_temp_raw == '', max_temp_raw)
         max_temp = np.array([float(val) for val in max_temp_masked])
+        max_temp = np.ma.masked_where(np.isnan(max_temp), max_temp)
 
         min_temp_raw = np.array(dataframe['Min Temp (C)'])
         min_temp_masked = np.ma.masked_where(min_temp_raw == '', min_temp_raw)
         min_temp = np.array([float(val) for val in min_temp_masked])
-
-        x = np.arange(0., len(period))
-        y1 = map(degree_days, min_temp, max_temp)
+        min_temp = np.ma.masked_where(np.isnan(min_temp), min_temp)        
+        
+        x = np.arange(1, len(period)+2)
+        y1 = degree_days(min_temp, max_temp)
         y2 = None
-        max_daily, sum_daily = max(y1), np.nansum(y1)
+        max_daily, sum_daily = y1.max(), np.nansum(y1)
         title = 'Degree-Days Above 10 Celsius'
         y1_label = 'DD > 10 Celsius'
         y2_label = None
@@ -288,36 +294,41 @@ def plot_maker(analysis, axarr, subplot, plot):
             c1 = 'cornflowerblue'
             c2 = 'firebrick'
             axarr[subplot].set_ylabel(y1_label)
-            axarr[subplot].plot(x, y1, 'o', color = c1)
-            axarr[subplot].plot(x, y2, 'o', color = c2)
+            axarr[subplot].plot(x, y1, '-o', color = c1)
+            axarr[subplot].plot(x, y2, '-o', color = c2)
             axarr[subplot].legend()
-
-            axarr[subplot].text(160, -20, y1_title)
-            axarr[subplot].text(160, -10, y2_title)
+            
+            bottom = min(y1)
+            axarr[subplot].text(140, bottom+10, y1_title)
+            axarr[subplot].text(140, bottom+20, y2_title)
 
         elif plot == 1: # Create the Snow and Precipitation plot
-            # The axes are not correct in this figure. Need to be flipped.
             c1 = 'black'
             c2 = 'royalblue'
             axarr[subplot].tick_params('y', colors = c1)
             axarr[subplot].bar(x, y1, color = c1, edgecolor = c1)
             axarr[subplot].set_ylabel(y1_label)
             axarr[subplot].tick_params('y', colors = c1)
-            
-            axarr[subplot].text(160, 25, y1_title)
-            axarr[subplot].text(160, 15, y2_title)
+                        
+            thirdpoint = (max(y1) + min(y1))/1.5
+            axarr[subplot].text(140, thirdpoint, y1_title)
             
             axalt = axarr[subplot].twinx()
             axalt.plot(x, y2, 'o', color = c2)
             axalt.set_ylabel(y2_label)
             axalt.tick_params('y', colors = c2)
-        
+            
+            thirdpoint = (max(y1) + min(y1))/1.5
+            axalt.text(140, thirdpoint, y2_title)
+            
         elif plot == 2: # Create the Degree-Days plot
             c1 = 'forestgreen'
             axarr[subplot].set_ylabel(y1_label)
             axarr[subplot].plot(x, y1, '-', color = c1)
-            axarr[subplot].text(10, 16, y1_title)
-            axarr[subplot].text(10, 12, y2_title)
+            
+            thirdpoint = (max(y1) + min(y1))/1.5
+            axarr[subplot].text(15, thirdpoint, y1_title)
+            axarr[subplot].text(15, thirdpoint/1.5, y2_title)
        
         else:
             return 'You need more plot styles.'
