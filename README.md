@@ -7,7 +7,7 @@ _A work in progress: run at your own risk_
 ---
 ## Features
 
-- Downloading of weather station data using the [Environment Canada FTP](ftp://ftp.tor.ec.gc.ca/Pub/Get_More_Data_Plus_de_donnees/Readme.txt) and wget.
+- Downloading of weather station data using the Environment Canada FTP (<ftp://ftp.tor.ec.gc.ca/Pub/Get_More_Data_Plus_de_donnees/Readme.txt>) and wget.
 
 - Outputting of continuous station data according to date/time for several environmental indicators for Hourly and Daily data.
 
