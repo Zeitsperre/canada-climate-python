@@ -244,7 +244,7 @@ def plot_maker(analysis, axarr, subplot, plot):
         x, y1, y2, month, title, y1_label, y2_label, y1_title, y2_title = analysis
     except (TypeError, ValueError):
         try:
-            print "Skipping", analysis[0], "for Month", analysis[1]
+            print analysis[0] + "for Month" + analysis[1] + "is being skipped"
         except:
             print "Unskippable Error. Abandon Ship!"
             sys.exit()
