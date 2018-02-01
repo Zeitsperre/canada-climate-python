@@ -117,28 +117,26 @@ def match_locations(locations):
     """
 
     ident = 'Climate Identifier'
-    year = 'Year'
-    month = 'Month'    
+    yr = 'Year'
+    mon = 'Month'    
     
     matches = []
     order_months = [[]]
     processed_stations = []
     try:
         for i, station1 in enumerate(locations):
-            if station1[ident] in processed_stations:
+            if (station1[ident],station1[yr][0]) in processed_stations:
                 continue
             matches.append([])
             matches[-1].append(station1)
-            order_months[-1].append(int(station1[month][0]))
+            order_months[-1].append(int(station1[mon][0]))
             for station2 in locations[i + 1:]:
                 if station1[ident] == station2[ident] \
-                        and int(station1[year][0]) == int(station2[year][0]) \
-                                and int(station1[month][0]) != int(station2[month][0]):
+                        and int(station1[yr][0]) == int(station2[yr][0]) \
+                                and int(station1[mon][0]) != int(station2[mon][0]):
                     matches[-1].append(station2)
-                    order_months[-1].append(int(station2[month][0]))
-            processed_stations.append(station1[ident])
-            matches[-1] = [x for _, x in sorted(zip(order_months[-1], matches[-1]))]
-        
+                    order_months[-1].append(int(station2[mon][0]))
+            processed_stations.append((station1[ident],station1[yr][0]))
         return matches
     except ValueError:
         raise Exception("Verify that CSV has valid dates and formatted properly")
@@ -216,7 +214,7 @@ def calc_that(match, plot):
         y2 = None
         min_wcf, mean_wcf = y1.min(), y1.mean()
         title = 'Wind Chill Factor'
-        y1_label = 'Degrees Celsius'
+        y1_label = 'Deg C'
         y2_label = None
         y1_title = 'Monthly Extreme Wind Chill: {} degrees'.format(min_wcf)
         y2_title = 'Mean Monthly Wind Chill: {} degrees'.format(mean_wcf)
@@ -261,30 +259,19 @@ def plot_maker(analysis, axarr, subplot, plot):
             axarr[subplot].set_ylabel(y1_label)
             axarr[subplot].plot(x, y1, '-', color = c1)
             axarr[subplot].legend()
-            
             bottom = min(y1)
             axarr[subplot].text(140, bottom+15, y1_title)
             axarr[subplot].text(140, bottom+40, y2_title)
 
         elif plot == 1: # Create the Wind Chill Factor plot
-#            c1 = 'turquoise'
-#            axarr[subplot].tick_params('y', colors = c1)
-#            axarr[subplot].bar(x, y1, color = c1, edgecolor = c1)
-#            axarr[subplot].set_ylabel(y1_label)
-#            axarr[subplot].tick_params('y', colors = c1)
-#                        
-#            thirdpoint = (max(y1) + min(y1))/1.5
-#            axarr[subplot].text(140, thirdpoint, y1_title)
-            pass
-        elif plot == 2: # Create the Degree-Days plot
-#            c1 = 'forestgreen'
-#            axarr[subplot].set_ylabel(y1_label)
-#            axarr[subplot].plot(x, y1, '-', color = c1)
-#            
-#            thirdpoint = (max(y1) + min(y1))/1.5
-#            axarr[subplot].text(15, thirdpoint, y1_title)
-#            axarr[subplot].text(15, thirdpoint/1.5, y2_title)
-            pass
+            if np.nansum(y1) is None:
+                return None
+            c1 = 'turquoise'
+            axarr[subplot].tick_params('y')
+            axarr[subplot].bar(x, y1, color = c1, edgecolor = c1)
+            axarr[subplot].set_ylabel(y1_label)
+            axarr[subplot].text(140, -5, y1_title)
+
         else:
             return 'You need more plot styles.'
             
@@ -328,13 +315,13 @@ def daily_stations():
             for station in match:
                 print (station['Station Name'] + ' ID:' + station['Climate Identifier'] 
                     + ' for Month ' + station['Month'][0] + ' in ' + station['Year'][0])   
-            for plot in range(3):
+            for plot in range(2):
                 f, axarr = plt.subplots(len(match), 1, sharex = True)
                 for subplot, station in enumerate(match):
                     analysis = calc_that(station, plot)
                     plot_maker(analysis, axarr, subplot, plot)
                 
-                f.subplots_adjust(hspace=0.25)
+                f.subplots_adjust(hspace=0.5)
                 f.text(0.5, 0.04, 'Hour in Month', ha = 'center', va = 'center')
                 stationplace = match[0]['Station Name'] + ' Station for Year ' + match[0]['Year'][0]
                 f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
@@ -344,7 +331,7 @@ def daily_stations():
             print (match[0]['Station Name'] + ' ID:' + match[0]['Climate Identifier']
                 + ' for Month ' + station['Month'][0] + ' in ' + match[0]['Year'][0])
             f, axarr = plt.subplots(3, 1, sharex = True)
-            for subplot in range(3):
+            for subplot in range(2):
                 analysis = calc_that(match[0], subplot)
                 plot_maker(analysis, axarr, subplot, subplot)
             

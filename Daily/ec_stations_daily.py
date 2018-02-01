@@ -116,7 +116,7 @@ def match_locations(locations):
     """
 
     ident = 'Climate Identifier'
-    year = 'Year'
+    yr = 'Year'
 
     matches = []
     order_years = [[]]
@@ -127,15 +127,13 @@ def match_locations(locations):
                 continue
             matches.append([])
             matches[-1].append(station1)
-            order_years[-1].append(int(station1[year][0]))
+            order_years[-1].append(int(station1[yr][0]))
             for station2 in locations[i + 1:]:
                 if station1[ident] == station2[ident] \
-                        and int(station1[year][0]) != int(station2[year][0]):
+                        and int(station1[yr][0]) != int(station2[yr][0]):
                     matches[-1].append(station2)
-                    order_years[-1].append(int(station2[year][0]))
+                    order_years[-1].append(int(station2[yr][0]))
             processed_stations.append(station1[ident])
-            matches[-1] = [x for _, x in sorted(zip(order_years[-1], matches[-1]))]
-    
         return matches
     except ValueError:
         raise Exception("Verify that CSV has valid dates and formatted properly")
