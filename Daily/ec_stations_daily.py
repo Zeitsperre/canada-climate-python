@@ -77,8 +77,8 @@ def place_that(name):
 
         return datum
     except ValueError:
-        raise Exception("Not a valid station CSV. \
-            Verify that CSV holds Environment Canada station data.")
+        raise Exception("Invalid station CSV. \
+            Verify that CSVs hold Environment Canada station data.")
         pass
 
 def grab_that(station):
@@ -163,15 +163,14 @@ def calc_that(match, plot):
         min_date = np.datetime64(min(dataframe['Date/Time']))
         max_date = np.datetime64(max(dataframe['Date/Time']))
         year = (dataframe['Year'][0])
-        period = np.arange(min_date, max_date, dtype='datetime64[D]')
+        period = np.arange(min_date, max_date + np.timedelta64(1,'D'), dtype='datetime64[D]')
         return year, period
 
     def out_temp(dataframe):
         """
         Formats the min and max temperature series and creates labels
         """
-        year, period = out_period(dataframe)
-        
+        year, days = out_period(dataframe)
         
         #There's a better way -> Implement np handling here
         max_temp_raw = np.array(dataframe['Max Temp (C)'])
@@ -185,7 +184,6 @@ def calc_that(match, plot):
         min_temp = np.array([float(val) for val in min_temp_masked])
         min_temp = np.ma.masked_where(np.isnan(min_temp), min_temp)
 
-        x = np.arange(1, len(period)+2)
         y1 = min_temp
         y2 = max_temp
         emint, emaxt = y1.min(), y2.max()
@@ -195,13 +193,13 @@ def calc_that(match, plot):
         y1_title = 'Extreme Min Temp: {}'.format(emint)
         y2_title = 'Extreme Max Temp: {}'.format(emaxt)
         
-        return x, y1, y2, year, title, y1_label, y2_label, y1_title, y2_title
+        return days, y1, y2, year, title, y1_label, y2_label, y1_title, y2_title
 
     def out_precip(dataframe):
         """
         Calculates and formats value indicators for precipitation and snow.
         """
-        year, period = out_period(dataframe)
+        year, days = out_period(dataframe)
 
         #There's a better way -> Implement np handling here
         tot_ppt_raw = np.ma.array(dataframe['Total Precip (mm)'])
@@ -217,7 +215,6 @@ def calc_that(match, plot):
         snow = np.array([float(val) for val in snow_masked])
         snow = np.ma.masked_where(np.isnan(snow), snow)
 
-        x = np.arange(1, len(period)+2)
         y1 = snow
         y2 = tot_precip
         max_snow, sum_ppt = y1.max(), np.nansum(y2)
@@ -227,7 +224,7 @@ def calc_that(match, plot):
         y1_title = 'Day with Most Snow on Ground: {} cm'.format(max_snow)
         y2_title = 'Total Annual Precipitation: {} mm'.format(sum_ppt)
 
-        return x, y1, y2, year, title, y1_label, y2_label, y1_title, y2_title
+        return days, y1, y2, year, title, y1_label, y2_label, y1_title, y2_title
 
     def out_dd10(dataframe):
         """
@@ -240,7 +237,7 @@ def calc_that(match, plot):
             dd[np.where(dd<0)] = 0
             return dd
 
-        year, period = out_period(dataframe)
+        year, days = out_period(dataframe)
 
         #There's a better way -> Implement np handling here
         max_temp_raw = np.array(dataframe['Max Temp (C)'])
@@ -254,7 +251,6 @@ def calc_that(match, plot):
         min_temp = np.array([float(val) for val in min_temp_masked])
         min_temp = np.ma.masked_where(np.isnan(min_temp), min_temp)        
         
-        x = np.arange(1, len(period)+2)
         y1 = degree_days(min_temp, max_temp)
         y2 = None
         max_daily, sum_daily = y1.max(), np.nansum(y1)
@@ -264,7 +260,7 @@ def calc_that(match, plot):
         y1_title = 'Maximum Daily Value: {}'.format(max_daily)
         y2_title = 'Sum of Daily Values: {}'.format(sum_daily)
 
-        return x, y1, y2, year, title, y1_label, y2_label, y1_title, y2_title
+        return days, y1, y2, year, title, y1_label, y2_label, y1_title, y2_title
 
     # Depending on the plot type being calculated, only return the variables needed
     if plot == 0:
@@ -286,9 +282,10 @@ def plot_maker(analysis, axarr, subplot, plot):
     Is looped over to create subplots with multi-year or multi-station data.
     """
     # Import the values derived from calc_that
-    x, y1, y2, year, title, y1_label, y2_label, y1_title, y2_title = analysis
+    days, y1, y2, year, title, y1_label, y2_label, y1_title, y2_title = analysis
         
     # General plot elements
+    x = np.arange(1, len(days)+1)
     title = title + ' in ' + year
     axarr[subplot].set_title(title)
     axarr[subplot].set_xlim(min(x), max(x))
@@ -350,8 +347,8 @@ def daily_stations():
     completion before they are used by other scripts.
     """
     fnames = collect_that()
+    
     locations = []
-
     if len(fnames) > 1:
         for f in fnames:
             place = place_that(f)
