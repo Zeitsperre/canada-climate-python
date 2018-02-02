@@ -162,7 +162,7 @@ def calc_that(match, plot):
         """
         min_date = np.datetime64(min(dataframe['Date/Time']))
         max_date = np.datetime64(max(dataframe['Date/Time']))
-        year = (dataframe['Year'][0])
+        year = dataframe['Year'][0]
         period = np.arange(min_date, max_date + np.timedelta64(1,'D'), dtype='datetime64[D]')
         return year, period
 

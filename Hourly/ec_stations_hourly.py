@@ -27,7 +27,7 @@ def period(dataframe):
     """
     min_date = np.datetime64(min(dataframe['Date/Time']))
     max_date = np.datetime64(max(dataframe['Date/Time']))
-    month = (dataframe['Month'][0])
+    month = dataframe['Month'][0]
     period = np.arange(min_date, max_date + np.timedelta64(1,'D') , dtype='datetime64[D]')
     
     return month, period
@@ -39,14 +39,22 @@ def humid(dataframe):
     """
     month, days = period(dataframe)
 
-    humid_hourly = np.array(dataframe['Rel Hum (%)'], dtype = np.float)
+    humid_raw = dataframe['Rel Hum (%)']
+    for count, factor in enumerate(humid_raw): #Handling those annoying NoneTypes
+        try:
+            factor = float(factor)
+        except (TypeError, ValueError): 
+            humid_raw[count] = 'NaN'            
+    
+    humid_hourly = np.array(humid_raw, dtype = np.float)
     humid_hourly = np.ma.masked_where(np.isnan(humid_hourly), humid_hourly)
+
+    if type(np.nansum(humid_hourly)) != np.float64:
+            return
     
     humid_daily = humid_hourly.reshape(len(humid_hourly)/24, 24)
     min_humid = np.amin(humid_daily, axis = 1)
     max_humid = np.amax(humid_daily, axis = 1)
-
-    # TRY CATCHING EMPTY ARRAYS RIGHT HERE
 
     y1 = min_humid
     y2 = max_humid
@@ -73,15 +81,16 @@ def windchill(dataframe):
             factor = float(factor)
         except (TypeError, ValueError): 
             wcf_raw[count] = 'NaN'
-            
+        
     wcf_hourly = np.array(wcf_raw, dtype = np.float)
     wcf_hourly = np.ma.masked_where(np.isnan(wcf_hourly), wcf_hourly)
+
+    if type(np.nansum(wcf_hourly)) != np.float64:
+            return 
 
     wcf_daily = wcf_hourly.reshape(len(wcf_hourly)/24, 24)
     min_wcf = np.amin(wcf_daily, axis = 1)
     max_wcf = np.amax(wcf_daily, axis = 1)   
-    
-    # TRY CATCHING EMPTY ARRAYS RIGHT HERE
     
     y1 = min_wcf
     y2 = max_wcf
@@ -90,8 +99,8 @@ def windchill(dataframe):
     y1_label = 'Deg C'
     y2_label = None
     
-    y1_title = 'Average Min Wind Chill: {0:.3} degrees'.format(minmean_wcf)
-    y2_title = 'Average Max Wind Chill: {0:.3} degrees'.format(maxmean_wcf)
+    y1_title = 'Avg Min Wind Chill: {0:.3} deg C'.format(minmean_wcf)
+    y2_title = 'Avg Max Wind Chill: {0:.3} deg C'.format(maxmean_wcf)
 
     return days, y1, y2, month, title, y1_label, y2_label, y1_title, y2_title
 
@@ -281,8 +290,8 @@ def plot_maker(analysis, axarr, subplot, plot):
             c2 = 'mediumslateblue'
             axarr[subplot].tick_params('y')
             axarr[subplot].set_ylabel(y1_label)
-            axarr[subplot].plot(x, y1, '-', color = c1)
-            axarr[subplot].plot(x, y2, '-', color = c2)
+            axarr[subplot].plot(x, y1, '-o', color = c1)
+            axarr[subplot].plot(x, y2, '-o', color = c2)
             axarr[subplot].legend()
             bottom = y1.min()
             axarr[subplot].text(5, bottom+15, y1_title)
@@ -293,8 +302,8 @@ def plot_maker(analysis, axarr, subplot, plot):
             c2 = 'darkviolet'
             axarr[subplot].tick_params('y')
             axarr[subplot].set_ylabel(y1_label)
-            axarr[subplot].plot(x, y1, '-', color = c1)
-            axarr[subplot].plot(x, y2, '-', color = c2)
+            axarr[subplot].plot(x, y1, '-o', color = c1)
+            axarr[subplot].plot(x, y2, '-o', color = c2)
             axarr[subplot].set_ylabel(y1_label)
             axarr[subplot].text(5, -5, y1_title)
             axarr[subplot].text(15, -5, y2_title)
@@ -311,7 +320,7 @@ def data_unpacker(matches):
     continuous data for specific fields to be appended to CSVs
     """
 #    csv_list = [[]]
-#    csv_data = {'Date':[], 'Min Rel Humid (%)':[], 'Max Rel Humid (%)':[], 'Min WCF (deg C)':[], 'Max WCF (deg C)':[]}
+    csv_data = {'Date':[], 'Min Rel Humid (%)':[], 'Max Rel Humid (%)':[], 'Min WCF (deg C)':[], 'Max WCF (deg C)':[]}
 #    csv_meta = names = ('Station Name'
 #                     , 'Province'
 #                     , 'Latitude'
@@ -327,15 +336,15 @@ def data_unpacker(matches):
             for iterable, station in enumerate(match):
                 print (station['Station Name'] + ' ID:' + station['Climate Identifier'] 
                     + ' for Month ' + station['Month'][0] + ' in ' + station['Year'][0])
-#                if humid(station) is None or windchill(station) is None:
-#                    csv_data['Date'].extend(period(station))
-#                    csv_data['Min Rel Humid (%)'].extend(np.empty(len(period(station))))
-#                    csv_data['Max Rel Humid (%)'].extend(np.empty(len(period(station))))
-#                    csv_data['Min WCF (deg C)'].extend(np.empty(len(period(station))))
-#                    csv_data['Max WCF (deg C)'].extend(np.empty(len(period(station))))
-#                    del match[iterable]
-                
-                #stop()
+                if humid(station) is None or windchill(station) is None:
+                    csv_data['Date'].extend(period(station)[1])
+                    empty = np.full(len(period(station)), np.nan)
+                    csv_data['Min Rel Humid (%)'].extend(empty)
+                    csv_data['Max Rel Humid (%)'].extend(empty)
+                    csv_data['Min WCF (deg C)'].extend(empty)
+                    csv_data['Max WCF (deg C)'].extend(empty)
+                    del match[iterable]
+            stop()    
             # Begin subplotting processes   
             for plot in range(2):
                 f, axarr = plt.subplots(len(match), 1, sharex = True)
@@ -369,6 +378,15 @@ def data_unpacker(matches):
             print (match[0]['Station Name'] + ' ID:' + match[0]['Climate Identifier']
                 + ' for Month ' + station['Month'][0] + ' in ' + match[0]['Year'][0])
 
+            if humid(match) is None or windchill(match) is None:
+                csv_data['Date'].extend(period(station)[1])
+                empty = np.full(len(period(station)), np.nan)
+                csv_data['Min Rel Humid (%)'].extend(empty)
+                csv_data['Max Rel Humid (%)'].extend(empty)
+                csv_data['Min WCF (deg C)'].extend(empty)
+                csv_data['Max WCF (deg C)'].extend(empty)
+                del match[iterable]
+
             # Begin plotting processes
             f, axarr = plt.subplots(3, 1, sharex = True)
             for subplot in range(2):
@@ -398,7 +416,7 @@ def data_unpacker(matches):
             print 'This should never happen.'
         plt.show()
 
-    return #csv_data
+    return csv_data
 
 def daily_stations():
     """
