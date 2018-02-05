@@ -14,8 +14,6 @@ import sys
 import codecs
 import unicodecsv as csv
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-import matplotlib.dates as dates
 import numpy as np
 from pdb import set_trace as stop
 
@@ -29,18 +27,18 @@ def period(dataframe):
     max_date = np.datetime64(max(dataframe['Date/Time']))
     month = dataframe['Month'][0]
     period = np.arange(min_date, max_date + np.timedelta64(1,'D') , dtype='datetime64[D]')
-    
     return month, period
 
 
 def humid(dataframe):
     """
-    Formats the indicators for Relative Humidity.
+    Summarizes the indicators for Relative Humidity.
     """
+    key = 'Rel Hum (%)'
     month, days = period(dataframe)
-
-    humid_raw = dataframe['Rel Hum (%)']
-    for count, factor in enumerate(humid_raw): #Handling those annoying NoneTypes
+    
+    humid_raw = dataframe[key]
+    for count, factor in enumerate(humid_raw): #Handling NoneTypes
         try:
             factor = float(factor)
         except (TypeError, ValueError): 
@@ -50,7 +48,7 @@ def humid(dataframe):
     humid_hourly = np.ma.masked_where(np.isnan(humid_hourly), humid_hourly)
 
     if type(np.nansum(humid_hourly)) != np.float64:
-            return
+        return None, key, month
     
     humid_daily = humid_hourly.reshape(len(humid_hourly)/24, 24)
     min_humid = np.amin(humid_daily, axis = 1)
@@ -73,9 +71,10 @@ def windchill(dataframe):
     """
     Summarizes the indicators for Wind Chill Factor.
     """
+    key = 'Wind Chill'
     month, days = period(dataframe)
 
-    wcf_raw = dataframe['Wind Chill']
+    wcf_raw = dataframe[key]
     for count, factor in enumerate(wcf_raw): #Handling those annoying NoneTypes
         try:
             factor = float(factor)
@@ -86,8 +85,8 @@ def windchill(dataframe):
     wcf_hourly = np.ma.masked_where(np.isnan(wcf_hourly), wcf_hourly)
 
     if type(np.nansum(wcf_hourly)) != np.float64:
-            return 
-
+        return None, key, month
+            
     wcf_daily = wcf_hourly.reshape(len(wcf_hourly)/24, 24)
     min_wcf = np.amin(wcf_daily, axis = 1)
     max_wcf = np.amax(wcf_daily, axis = 1)   
@@ -240,7 +239,7 @@ def calc_that(match, plot):
     """
     location = match.copy()
 
-    for key in location:
+    for key in location: # For removing non-UTF-8 characters
         newkey = key.encode('ascii', 'ignore')
         location[newkey] = location.pop(key)
         for count, val in enumerate(location[newkey]):
@@ -261,21 +260,137 @@ def calc_that(match, plot):
         return 'Gonna need more than that'
 
 
+def data_unpacker(matches, make_plots = True):
+    """
+    Unpacks the matches and match data to return continuous data 
+    that will be appended to CSVs. If make_plots == True, will create a
+    series of subplots.
+    """
+    csv_list = []
+
+    for match in matches:
+        csv_meta = ('Station Name'
+                     , 'Province'
+                     , 'Latitude'
+                     , 'Longitude'
+                     , 'Elevation'
+                     , 'Climate Identifier'
+                     , 'WMO Identifier'
+                     , 'TC Identifier')
+        csv_data = {'Date':[], 'Min Rel Humid (%)':[], 'Max Rel Humid (%)':[], 
+                'Min WCF (deg C)':[], 'Max WCF (deg C)':[]}
+        for keys in csv_meta:                                                                    
+            csv_meta = {keys:match[0][keys]}
+            csv_data.update(csv_meta)
+        if len(match) > 1:
+            print '\nMulti-Month Set Found; Matched as follows:'
+            for iterable, station in enumerate(match):
+                print (station['Station Name'] + ' ID:' + station['Climate Identifier'] 
+                    + ' for Month ' + station['Month'][0] + ' in ' + station['Year'][0])
+                
+            # Begin subplotting processes   
+            for plot in range(2):
+                if make_plots:
+                    f, axarr = plt.subplots(len(match), 1, sharex = True)
+                for subplot, station in enumerate(match):
+                    analysis = calc_that(station, plot)
+ 
+                    if make_plots:
+                        plot_maker(analysis, axarr, subplot, plot)
+                    
+                    length = len(period(station)[1])
+                    empty = np.ma.masked_array(np.zeros((length,)),mask=np.ones((length,)))
+                    
+                    # Grab formatted data as it is iterated over                          
+                    if plot == 0:                     
+                        csv_data['Date'].extend(period(station)[1])
+                        if analysis[0] is None:
+                            csv_data['Min Rel Humid (%)'].extend(empty)
+                            csv_data['Max Rel Humid (%)'].extend(empty)    
+                        else:
+                            csv_data['Min Rel Humid (%)'].extend(analysis[1])
+                            csv_data['Max Rel Humid (%)'].extend(analysis[2])
+                    if plot == 1:
+                        if analysis[0] is None:
+                            csv_data['Min WCF (deg C)'].extend(empty)
+                            csv_data['Max WCF (deg C)'].extend(empty)
+                        else:
+                            csv_data['Min WCF (deg C)'].extend(analysis[1])
+                            csv_data['Max WCF (deg C)'].extend(analysis[2])
+                
+                if make_plots:            
+                    f.subplots_adjust(hspace=0.5)
+                    f.text(0.5, 0.04, 'Day in Month', ha = 'center', va = 'center')
+                    stationplace = match[0]['Station Name'] + ' Station for Year ' + match[0]['Year'][0]
+                    f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
+
+        elif len(match) == 1:
+            print '\nSingle Month Station Found:'
+            print (match[0]['Station Name'] + ' ID:' + match[0]['Climate Identifier']
+                + ' for Month ' + match['Month'][0] + ' in ' + match[0]['Year'][0])
+
+            if humid(match) is None or windchill(match) is None:
+                csv_data['Date'].extend(period(station)[1])
+                length = len(period(station)[1])
+                empty = np.ma.masked_array(np.zeros((length,)),mask=np.ones((length,)))
+            if humid(match) is None:
+                csv_data['Min Rel Humid (%)'].extend(empty)
+                csv_data['Max Rel Humid (%)'].extend(empty)
+            if windchill(match) is None:
+                csv_data['Min WCF (deg C)'].extend(empty)
+                csv_data['Max WCF (deg C)'].extend(empty)
+
+            # Begin plotting processes
+            if make_plots:            
+                f, axarr = plt.subplots(3, 1, sharex = True)
+            for subplot in range(2):
+                analysis = calc_that(match[0], subplot)
+                
+                if make_plots:
+                    plot_maker(analysis, axarr, subplot, subplot)
+                
+                # Grab formatted data as it is iterated over                     
+                if plot == 0:
+                    csv_data['Date'].extend(period(match)[1])    
+                    if analysis[0] is None:
+                        csv_data['Min Rel Humid (%)'].extend(empty)
+                        csv_data['Max Rel Humid (%)'].extend(empty)    
+                    else:
+                        csv_data['Min Rel Humid (%)'].extend(analysis[1])
+                        csv_data['Max Rel Humid (%)'].extend(analysis[2])
+                if plot == 1:
+                    if analysis[0] is None:
+                        csv_data['Min WCF (deg C)'].extend(empty)
+                        csv_data['Max WCF (deg C)'].extend(empty)
+                    else:
+                        csv_data['Min WCF (deg C)'].extend(analysis[1])
+                        csv_data['Max WCF (deg C)'].extend(analysis[2])
+
+            if make_plots:
+                f.subplots_adjust(hspace=0.25)
+                f.text(0.5, 0.04, 'Day in Month', ha = 'center', va = 'center')
+                stationplace = match[0]['Station Name'] + ' Station for Year ' + match[0]['Year'][0]
+                f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
+            
+        else:
+            print 'This should never happen.'
+        csv_list.append(csv_data)
+        if make_plots:
+            plt.show()
+    return csv_list
+
+
 def plot_maker(analysis, axarr, subplot, plot):
     """
     Using plot names, axes, year and titles, creates a sublot or twin subplot.
     Is looped over to create subplots with multi-year or multi-station data.
     """
-    # Import the values derived from calc_that
+    # Import the values derived from calc_that or skip the month
     try:
         days, y1, y2, month, title, y1_label, y2_label, y1_title, y2_title = analysis
     except (TypeError, ValueError):
-        try:
-            # Final check for empty arrays
-            print analysis[0] + "for Month" + analysis[1] + "is being skipped"
-        except:
-            print "Unskippable Error. Abandon Ship!"
-            return
+        print analysis[1] + " for Month " + analysis[2] + " is being skipped"
+        return
     
     # General plot elements
     x = np.arange(1, len(days)+1)
@@ -314,111 +429,52 @@ def plot_maker(analysis, axarr, subplot, plot):
     except TypeError:
         raise Exception("That didn\'t work.")
 
-def data_unpacker(matches):
+
+def make_csvs(csv_list):
     """
-    Unpacks the matches and match data to call plotting functions and returns
-    continuous data for specific fields to be appended to CSVs
+    Writes out CSV with two headers detailing the station metadata and the
+    variables being written out. If a file for an existing station exists,
+    subsequent years will be appended to the file.
     """
-#    csv_list = [[]]
-    csv_data = {'Date':[], 'Min Rel Humid (%)':[], 'Max Rel Humid (%)':[], 'Min WCF (deg C)':[], 'Max WCF (deg C)':[]}
-#    csv_meta = names = ('Station Name'
-#                     , 'Province'
-#                     , 'Latitude'
-#                     , 'Longitude'
-#                     , 'Elevation'
-#                     , 'Climate Identifier'
-#                     , 'WMO Identifier'
-#                     , 'TC Identifier')
-
-    for match in matches:
-        if len(match) > 1:
-            print '\nMulti-Month Set Found; Matched as follows:'
-            for iterable, station in enumerate(match):
-                print (station['Station Name'] + ' ID:' + station['Climate Identifier'] 
-                    + ' for Month ' + station['Month'][0] + ' in ' + station['Year'][0])
-                if humid(station) is None or windchill(station) is None:
-                    csv_data['Date'].extend(period(station)[1])
-                    empty = np.full(len(period(station)), np.nan)
-                    csv_data['Min Rel Humid (%)'].extend(empty)
-                    csv_data['Max Rel Humid (%)'].extend(empty)
-                    csv_data['Min WCF (deg C)'].extend(empty)
-                    csv_data['Max WCF (deg C)'].extend(empty)
-                    del match[iterable]
-            stop()    
-            # Begin subplotting processes   
-            for plot in range(2):
-                f, axarr = plt.subplots(len(match), 1, sharex = True)
-                for subplot, station in enumerate(match):
-
-                    analysis = calc_that(station, plot)
-                    plot_maker(analysis, axarr, subplot, plot)
-                    
-#                    # Grabbing metadata
-#                    if plot == 0:
-#                        if subplot == 0:
-#                            for keys in csv_meta:                                                                    
-#                                csv_meta = {keys:station[keys]}
-#                                csv_data.update(csv_meta)
-#                        
-#                        # Grab formatted data as it is iterated over                  
-#                        csv_data['Date'].extend(analysis[0])
-#                        csv_data['Min Rel Humid (%)'].extend(analysis[1])
-#                        csv_data['Max Rel Humid (%)'].extend(analysis[2])
-#                    if plot == 1:
-#                        csv_data['Min WCF (deg C)'].extend(analysis[1])
-#                        csv_data['Max WCF (deg C)'].extend(analysis[2])
-                
-                f.subplots_adjust(hspace=0.5)
-                f.text(0.5, 0.04, 'Day in Month', ha = 'center', va = 'center')
-                stationplace = match[0]['Station Name'] + ' Station for Year ' + match[0]['Year'][0]
-                f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
- 
-        elif len(match) == 1:
-            print '\nSingle Month Station Found:'
-            print (match[0]['Station Name'] + ' ID:' + match[0]['Climate Identifier']
-                + ' for Month ' + station['Month'][0] + ' in ' + match[0]['Year'][0])
-
-            if humid(match) is None or windchill(match) is None:
-                csv_data['Date'].extend(period(station)[1])
-                empty = np.full(len(period(station)), np.nan)
-                csv_data['Min Rel Humid (%)'].extend(empty)
-                csv_data['Max Rel Humid (%)'].extend(empty)
-                csv_data['Min WCF (deg C)'].extend(empty)
-                csv_data['Max WCF (deg C)'].extend(empty)
-                del match[iterable]
-
-            # Begin plotting processes
-            f, axarr = plt.subplots(3, 1, sharex = True)
-            for subplot in range(2):
-                analysis = calc_that(match[0], subplot)
-                plot_maker(analysis, axarr, subplot, subplot)
-                
-                # Grabbing metadata
-                if plot == 0:
-                    if station == 0:
-                        pass
-#                        for keys in csv_meta.keys():                                                                    
-#                            csv_meta[keys] = station[keys]
+    
+    head = ('Station Name'
+             , 'Province'
+             , 'Latitude'
+             , 'Longitude'
+             , 'Elevation'
+             , 'Climate Identifier'
+             , 'WMO Identifier'
+             , 'TC Identifier')
+    body = ('Date', 'Min Rel Humid (%)', 'Max Rel Humid (%)'
+            , 'Min WCF (deg C)', 'Max WCF (deg C)')
+    
+    for csv_station in csv_list:
+        ident = csv_station['Climate Identifier']
+        name = str(ident) + '_humid_wcf.csv'
+        body = ('Date'
+                , 'Min Rel Humid (%)'
+                , 'Max Rel Humid (%)'
+                , 'Min WCF (deg C)'
+                , 'Max WCF (deg C)')
                         
-                    # Grab formatted data as it is iterated over                     
-#                    csv_data['Date'].extend(analysis[0])
-#                    csv_data['Min Rel Humid (%)'].extend(analysis[1])
-#                    csv_data['Max Rel Humid (%)'].extend(analysis[2])
-#                if plot == 1:
-#                    csv_data['Min WCF (deg C)'].extend(analysis[1])
-#                    csv_data['Max WCF (deg C)'].extend(analysis[2])
-            
-            f.subplots_adjust(hspace=0.25)
-            f.text(0.5, 0.04, 'Day in Month', ha = 'center', va = 'center')
-            stationplace = match[0]['Station Name'] + ' Station for Year ' + match[0]['Year'][0]
-            f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
-        else:
-            print 'This should never happen.'
-        plt.show()
+        if name in os.listdir('.'):
+            with codecs.open(name, 'a') as f:
+                list_writer = csv.writer(f, delimiter= ',')
+                list_writer.writerows(zip(*[csv_station[key] for key in body]))
+        else:            
+            with codecs.open(name, 'wb') as f:
+                dict_writer = csv.DictWriter(f, head, extrasaction='ignore')
+                dict_writer.writeheader()
+                dict_writer.writerow(csv_station)        
+            with codecs.open(name, 'a') as f:
+                dict_writer = csv.DictWriter(f, body, extrasaction = 'ignore')
+                dict_writer.writeheader()
+            with codecs.open(name, 'a') as f:
+                list_writer = csv.writer(f, delimiter= ',')
+                list_writer.writerows(zip(*[csv_station[key] for key in body]))
 
-    return csv_data
 
-def daily_stations():
+def daily_stations(make_plots):
     """
     The main script that calls other methods; Odd calls and methods that are
     yet to be integrated are placed here to ensure script methods can be run to
@@ -443,12 +499,15 @@ def daily_stations():
 
     matches = match_locations(locations)
  
-    csv_data = data_unpacker(matches)
+    csv_list = data_unpacker(matches, make_plots)
 
-    return csv_data
+    make_csvs(csv_list)   
+
+    print 'Done!'
+    return
     
 if __name__ == "__main__":
     '''
     For debugging purposes.
     '''
-    daily_stations()
+    daily_stations(make_plots = True)
