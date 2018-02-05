@@ -15,18 +15,20 @@ import codecs
 import unicodecsv as csv
 import matplotlib.pyplot as plt
 import numpy as np
+from datetime import datetime as dt
 from pdb import set_trace as stop
 
 
 def period(dataframe):
     """
-    Determines the earliest and latest dates and returns the length 
+    Determines the earliest and latest date/times and returns the length 
     of month in total number of days, accounting for leap years.
-    """
-    min_date = np.datetime64(min(dataframe['Date/Time']))
-    max_date = np.datetime64(max(dataframe['Date/Time']))
+    """ 
+    dates = np.array(dataframe['Date/Time'], dtype = 'datetime64[h]')
+    min_date = np.datetime64(min(dates), dtype = 'datetime64[D]')
+    max_date = np.datetime64(max(dates), dtype = 'datetime64[D]')
     month = dataframe['Month'][0]
-    period = np.arange(min_date, max_date + np.timedelta64(1,'D') , dtype='datetime64[D]')
+    period = np.arange(min_date, max_date+1, dtype = 'datetime64[D]')
     return month, period
 
 
@@ -136,9 +138,7 @@ def place_that(name):
             f.seek(0)
             verifier = csv.reader(f, dialect)
             for count, row in enumerate(verifier): # Read and format metadata 
-                print ': '.join(row)
                 if count > 6:
-                    print '\n'
                     break
             f.seek(0)
             names = ('Station Name'
@@ -436,6 +436,8 @@ def make_csvs(csv_list):
     variables being written out. If a file for an existing station exists,
     subsequent years will be appended to the file.
     """
+        
+    now = dt.now()
     
     head = ('Station Name'
              , 'Province'
@@ -450,7 +452,7 @@ def make_csvs(csv_list):
     
     for csv_station in csv_list:
         ident = csv_station['Climate Identifier']
-        name = str(ident) + '_humid_wcf.csv'
+        name = str(ident) + '_humid_wcf.' + now.strftime("%Y-%m-%d") + '.csv'
         body = ('Date'
                 , 'Min Rel Humid (%)'
                 , 'Max Rel Humid (%)'
@@ -504,10 +506,16 @@ def daily_stations(make_plots):
     make_csvs(csv_list)   
 
     print 'Done!'
-    return
+    return 0
     
 if __name__ == "__main__":
-    '''
+    """
     For debugging purposes.
-    '''
-    daily_stations(make_plots = True)
+    """
+    make_plots = False  
+    plots = raw_input('Do you want to produce plots of data? y/n [n]')
+    if plots in ('y', 'Y'):
+        make_plots = True
+    print 'Making Plots!'*make_plots
+    
+    daily_stations(make_plots)
