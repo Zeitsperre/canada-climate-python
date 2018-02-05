@@ -1,2 +1,3 @@
-eng-*
-
+eng-hourly*
+eng-daily*
+*.csv
