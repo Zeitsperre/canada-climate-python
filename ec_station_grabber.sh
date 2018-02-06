@@ -6,7 +6,7 @@
 station_list='5389 5415 5441 5415 5406 5452 5452 5452 5452 5538 5538 5401 5322 5368 5401 5339 5368'
 year_list='2015 2016 2017'
 month_list='1 2 3 4 5 6 7 8 9 10 11 12'
-tframe='1 2 3'
+tframe='1'
 
 
-for station in $station_list;do for year in $year_list; do for month in $month_list;do wget --content-disposition "http://climate.weather.gc.ca/climate_data/bulk_data_e.html?format=csv&stationID=${station}&Year=${year}&Month=$month&Day=1&timeframe=1&submit=Download+Data";done;done;done
+for station in $station_list;do for year in $year_list; do for month in $month_list;do wget --content-disposition "http://climate.weather.gc.ca/climate_data/bulk_data_e.html?format=csv&stationID=${station}&Year=${year}&Month=${month}&Day=1&timeframe=${tframe}&submit=Download+Data";done;done;done

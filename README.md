@@ -15,7 +15,7 @@ _A work in progress: run at your own risk_
 
 ## Requires
 
-Python2, NumPy, unicodecsv, Matplotlib, wget
+Python2: collections, codecs, Matplotlib, NumPy, unicodecsv, wget 
 
 ## Goal
 

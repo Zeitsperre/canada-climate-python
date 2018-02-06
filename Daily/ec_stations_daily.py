@@ -3,23 +3,41 @@
 """
 Created on Tue Jan 16 10:05:19 2018
 @author: trevor
+
+convert function developed by Richie Hindle
+https://stackoverflow.com/questions/1254454/fastest-way-to-convert-a-dicts-keys-values-from-unicode-to-str/1254499#1254499
 """
 import os
+import codecs #Needs to be removed. Obsolete
 import sys
-import codecs
 import unicodecsv as csv
 import matplotlib.pyplot as plt
+import collections
 import numpy as np
 from datetime import datetime as dt
 from pdb import set_trace as stop
 
 
+def convert(data):
+    if isinstance(data, basestring):
+       try:
+           return str(data)
+       except:
+           return data.encode('ascii', 'ignore')
+    elif isinstance(data, collections.Mapping):
+        return dict(map(convert, data.iteritems()))
+    elif isinstance(data, collections.Iterable):
+        return type(data)(map(convert, data))
+    else:
+        return data
+
+    
 def period(dataframe):
     """
     Determines the lenth of year in days. Needed for leap-year handling.
-    """ 
-    year = dataframe['Year'][0]
+    """
     period = np.array(dataframe['Date/Time'], dtype='datetime64[D]')
+    year = period[0].astype('datetime64[Y]').astype(int)
     return year, period
 
 def temp(dataframe):
@@ -39,38 +57,22 @@ def temp(dataframe):
             min_temp_raw[count] = 'NaN'            
     
     min_temp = np.array(min_temp_raw, dtype = np.float)
-    min_temp_ma = np.ma.masked_where(np.isnan(min_temp), min_temp)
+    min_temp_masked = np.ma.masked_where(np.isnan(min_temp), min_temp)
 
-    if type(np.nansum(min_temp_ma)) != np.float64:
-        return None, key1, year
+    if type(np.nansum(min_temp_masked)) != np.float64:
+        return None, 'Temperature Min/Max', year
 
     for count, factor in enumerate(max_temp_raw): #Handling NoneTypes
         try:
             factor = float(factor)
         except (TypeError, ValueError): 
             max_temp_raw[count] = 'NaN'            
-    
+     
     max_temp = np.array(max_temp_raw, dtype = np.float)
-    max_temp_ma = np.ma.masked_where(np.isnan(max_temp), max_temp)
+    max_temp_masked = np.ma.masked_where(np.isnan(max_temp), max_temp)
 
-    if type(np.nansum(min_temp_ma)) != np.float64:
-        return None, key1, year
-
-
-#    #There's a better way -> Implement np handling here
-#    max_temp_raw = np.array(dataframe['Max Temp (C)'])
-#    max_temp_masked = np.ma.masked_where(max_temp_raw == '', max_temp_raw)
-#    max_temp = np.array([float(val) for val in max_temp_masked])
-#    max_temp = np.ma.masked_where(np.isnan(max_temp), max_temp)
-#
-#    #There's a better way -> Implement np handling here
-#    min_temp_raw = np.array(dataframe['Min Temp (C)'])
-#    min_temp_masked = np.ma.masked_where(min_temp_raw == '', min_temp_raw)
-#    min_temp = np.array([float(val) for val in min_temp_masked])
-#    min_temp = np.ma.masked_where(np.isnan(min_temp), min_temp)
-
-    y1 = min_temp_ma
-    y2 = max_temp_ma
+    y1 = min_temp_masked
+    y2 = max_temp_masked
     emint, emaxt = y1.min(), y2.max()
     title = 'Temperature'
     y1_label = 'Deg C'
@@ -85,40 +87,43 @@ def precip(dataframe):
     Calculates and formats value indicators for precipitation and snow.
     """
     year, days = period(dataframe)
+    key1 = 'Total Precip (mm)'
+    key2 = 'Snow on Grnd (cm)'
+    tot_ppt_raw = dataframe[key1]
+    snow_raw = dataframe[key2]
 
-#    humid_raw = dataframe[key]
-#    for count, factor in enumerate(humid_raw): #Handling NoneTypes
-#        try:
-#            factor = float(factor)
-#        except (TypeError, ValueError): 
-#            humid_raw[count] = 'NaN'            
-#    
-#    humid_hourly = np.array(humid_raw, dtype = np.float)
-#    humid_hourly = np.ma.masked_where(np.isnan(humid_hourly), humid_hourly)
-#
-#    if type(np.nansum(humid_hourly)) != np.float64:
-#        return None, key, month
+    for count, factor in enumerate(tot_ppt_raw): #Handling NoneTypes
+        try:
+            factor = float(factor)
+        except (TypeError, ValueError): 
+            tot_ppt_raw[count] = 'NaN'            
+    
+    tot_ppt = np.array(tot_ppt_raw, dtype = np.float)
+    tot_ppt_masked = np.ma.masked_where(np.isnan(tot_ppt), tot_ppt)
 
-    #There's a better way -> Implement np handling here
-    tot_ppt_raw = np.ma.array(dataframe['Total Precip (mm)'])
-    tot_ppt_masked = np.ma.masked_where(tot_ppt_raw == '', tot_ppt_raw)
-    tot_ppt_masked = np.ma.masked_where(tot_ppt_raw == 'M', tot_ppt_masked)
-    tot_precip = np.array([float(val) for val in tot_ppt_masked])
-    tot_precip = np.ma.masked_where(np.isnan(tot_precip), tot_precip)
+    for count, factor in enumerate(snow_raw): #Handling NoneTypes
+        try:
+            factor = float(factor)
+        except (TypeError, ValueError): 
+            snow_raw[count] = 'NaN'            
+    
+    snow = np.array(snow_raw, dtype = np.float)
+    snow_masked = np.ma.masked_where(np.isnan(snow), snow)
 
-    #There's a better way -> Implement np handling here 
-    snow_raw = np.ma.array(dataframe['Snow on Grnd (cm)'])
-    snow_masked = np.ma.masked_where(snow_raw == '', snow_raw)
-    snow_masked = np.ma.masked_where(snow_raw == 'M', snow_masked)
-    snow = np.array([float(val) for val in snow_masked])
-    snow = np.ma.masked_where(np.isnan(snow), snow)
+    if type(np.nansum(tot_ppt_masked)) != np.float64 and\
+        type(np.nansum(snow_masked)) != np.float64:
+        return None, key1 + ' and ' + key2, year
+    elif type(np.nansum(tot_ppt_masked)) != np.float64:
+        return None, key1, year
+    elif type(np.nansum(snow_masked)) != np.float64:
+        return None, key2, year
 
-    y1 = snow
-    y2 = tot_precip
-    max_snow, sum_ppt = y1.max(), np.nansum(y2)
+    y1 = tot_ppt_masked
+    y2 = snow_masked
+    max_snow, sum_ppt = y2.max(), np.nansum(y1)
     title = 'Precipitation and Snow on Ground'
-    y1_label = 'cm'
-    y2_label = 'mm'
+    y1_label = 'mm'
+    y2_label = 'cm'
     y1_title = 'Day with Most Snow on Ground: {} cm'.format(max_snow)
     y2_title = 'Total Annual Precipitation: {} mm'.format(sum_ppt)
 
@@ -133,38 +138,19 @@ def ddays(dataframe, base = 10):
         dd = (((low + high) - base) / 2)
         dd[np.where(dd<0)] = 0
         return dd
-
-    year, days = period(dataframe)
-
-#    humid_raw = dataframe[key]
-#    for count, factor in enumerate(humid_raw): #Handling NoneTypes
-#        try:
-#            factor = float(factor)
-#        except (TypeError, ValueError): 
-#            humid_raw[count] = 'NaN'            
-#    
-#    humid_hourly = np.array(humid_raw, dtype = np.float)
-#    humid_hourly = np.ma.masked_where(np.isnan(humid_hourly), humid_hourly)
-#
-#    if type(np.nansum(humid_hourly)) != np.float64:
-#        return None, key, month
-
-    #There's a better way -> Implement np handling here
-    max_temp_raw = np.array(dataframe['Max Temp (C)'])
-    max_temp_masked = np.ma.masked_where(max_temp_raw == '', max_temp_raw)
-    max_temp = np.array([float(val) for val in max_temp_masked])
-    max_temp = np.ma.masked_where(np.isnan(max_temp), max_temp)
-
-    #There's a better way -> Implement np handling here
-    min_temp_raw = np.array(dataframe['Min Temp (C)'])
-    min_temp_masked = np.ma.masked_where(min_temp_raw == '', min_temp_raw)
-    min_temp = np.array([float(val) for val in min_temp_masked])
-    min_temp = np.ma.masked_where(np.isnan(min_temp), min_temp)        
     
-    y1 = degree_days(min_temp, max_temp, base)
+    key = 'Degree Days >' + str(base) + '°C'
+    year, days = period(dataframe)
+    
+    if temp(dataframe)[0] is None:
+        return None, key, year
+    
+    min_temp_ma, max_temp_ma = temp(dataframe)[1,2]
+    
+    y1 = degree_days(min_temp_ma, max_temp_ma, base)
     y2 = None
     max_daily, sum_daily = y1.max(), np.nansum(y1)
-    title = 'Degress Days Above ' + str(base) + ' C'
+    title = key
     y1_label = 'deg C'
     y2_label = None
     y1_title = 'Maximum Daily Value: {}'.format(max_daily)
@@ -199,10 +185,8 @@ def place_that(name):
     """
     try:
         location = str(name)
-        with codecs.open(location, 'rb') as f:
-            dialect = csv.Sniffer().sniff(f.read(1024))
-            f.seek(0)
-            verifier = csv.reader(f, dialect)
+        with open(location, 'r') as f:
+            verifier = csv.reader(f)
             for count, row in enumerate(verifier): # Read and format metadata 
                 if count > 6:
                     break
@@ -220,50 +204,45 @@ def place_that(name):
 
             for count, row in enumerate(verifier):
                 if count == 0: # Special handling to deal with UTF-8 BOM
-                    key = 'Station Name'
-                    field = row[1]
+                    key = names[0]
+                    field = convert(row[1])
                     datum[key] = field
                     continue
                 try:
                     if row[0] in names:
-                        key = row[0]
-                        field = row[1]
+                        key = convert(row[0])
+                        field = convert(row[1])
                         datum[key] = field
                 except:
                     continue
-
         return datum
     except ValueError:
-        raise Exception("Invalid station CSV. \
-            Verify that CSVs hold Environment Canada station data.")
-        pass
+        sys.exit()
+       # raise Exception("Invalid station CSV.\nVerify that CSVs hold Environment Canada station data.")
+
 
 def grab_that(station):
     """
     A method that extracts climate data from CSV and converts it to a
     dictionary object.
     """
-    with codecs.open(station, 'rb', ) as f:
-        #Tries to figure out CSV formatting to address encoding issues.
-        dialect = csv.Sniffer().sniff(f.read(1024))
-        f.seek(0)
-        lines = csv.reader(f, dialect)
+    
+    with open(station, 'r') as f:
+        lines = csv.reader(f)
         for i in range(25): # Skips the metadata
             next(lines)
-
         names, datum = [], {}
         for column in lines:
             for name in column:
-                names.append(name)
+                names.append(convert(name))
                 datum[name] = []
             break
-
         reader = csv.DictReader(f, fieldnames=names, delimiter=',', quotechar='"')
         for row in reader:
             for column, value in row.iteritems():
                 value = value
                 datum.setdefault(column, []).append(value)
-        return datum
+    return datum
 
 
 def match_locations(locations):
@@ -290,6 +269,7 @@ def match_locations(locations):
                         and int(station1[yr][0]) != int(station2[yr][0]):
                     matches[-1].append(station2)
                     order_years[-1].append(int(station2[yr][0]))
+
             processed_stations.append(station1[ident])
         return matches
     except ValueError:
@@ -301,16 +281,7 @@ def calc_that(match, plot):
     climate data to ASCII and proceeds to create a dataframe 
     derived from it.
     """
-    location = match
-    for key in match:
-        newkey = key.encode('ascii', 'ignore')
-        location[newkey] = location.pop(key)
-        for count, val in enumerate(match[newkey]):
-            try:
-                newval = val.encode('ascii', 'ignore')
-                location[newkey][count] = newval
-            except TypeError:
-                continue
+    location = match.copy()
 
     # Depending on the plot type being calculated, only return the variables needed
     if plot == 0:
@@ -398,7 +369,7 @@ def data_unpacker(matches, base, make_plots):
     series of subplots.
     """
     csv_list = []
-    dd = 'Deg Days > ' + str(base) + 'C'
+    dd = 'Deg Days > ' + str(base) + ' °C'
     
     for match in matches:
         csv_meta = ('Station Name'
@@ -408,7 +379,7 @@ def data_unpacker(matches, base, make_plots):
                      , 'Climate Identifier'
                      , 'WMO Identifier'
                      , 'TC Identifier')
-        csv_data = {'Date':[], 'Min Temp (deg C)':[], 'Max Temp (deg C)':[], 
+        csv_data = {'Date':[], 'Min Temp (C)':[], 'Max Temp (C)':[], 
                 'Total Precip (mm)':[], 'Snow on Grnd (cm)':[], dd:[]}
         for keys in csv_meta:                                                                    
             csv_meta = {keys:match[0][keys]}
@@ -437,11 +408,11 @@ def data_unpacker(matches, base, make_plots):
                     if plot == 0:                     
                         csv_data['Date'].extend(period(station)[1])
                         if analysis[0] is None:
-                            csv_data['Min Temp (deg C)'].extend(empty)
-                            csv_data['Max Temp (deg C)'].extend(empty)    
+                            csv_data['Min Temp (C)'].extend(empty)
+                            csv_data['Max Temp (C)'].extend(empty)    
                         else:
-                            csv_data['Min Temp (deg C)'].extend(analysis[1])
-                            csv_data['Max Temp (deg C)'].extend(analysis[2])
+                            csv_data['Min Temp (C)'].extend(analysis[1])
+                            csv_data['Max Temp (C)'].extend(analysis[2])
                     if plot == 1:
                         if analysis[0] is None:
                             csv_data['Total Precip (mm)'].extend(empty)
@@ -462,62 +433,62 @@ def data_unpacker(matches, base, make_plots):
                     f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
 
         elif len(match) == 1:
+            station = match[0]
             print '\nSingle Year Station Found:'
-            print match[0]['Station Name'] + ' ID ' + match[0]['Climate Identifier']\
-                    + ' in ' + match[0]['Year'][0]
-
-            if temp(match) is None or precip(match) or ddays(match) is None:
+            print station['Station Name'] + ' ID ' + station['Climate Identifier']\
+                    + ' in ' + station['Year'][0]
+            
+            length = len(period(station)[1])
+            empty = np.ma.masked_array(np.zeros((length,)),mask=np.ones((length,)))
+            stop()
+            if np.all(temp(station)[0], precip(station)[0], ddays(station)[0]):
+            #if temp(station)[0] is None or precip(station)[0] or ddays(station)[0] is None:
                 csv_data['Date'].extend(period(station)[1])
-                length = len(period(station)[1])
-                empty = np.ma.masked_array(np.zeros((length,)),mask=np.ones((length,)))
-            if temp(match) is None:
-                csv_data['Min Rel Humid (%)'].extend(empty)
-                csv_data['Max Rel Humid (%)'].extend(empty)
-            if precip(match) is None:
-                csv_data['Min WCF (deg C)'].extend(empty)
-                csv_data['Max WCF (deg C)'].extend(empty)
-            if ddays(match) is None:
-                csv_data['Min Rel Humid (%)'].extend(empty)
-                csv_data['Max Rel Humid (%)'].extend(empty)
-
+            if temp(station)[0] is None:
+                csv_data['Min Temp (C)'].extend(empty)
+                csv_data['Max Temp (C)'].extend(empty)
+            if precip(station)[0] is None:
+                csv_data['Total Precip (mm)'].extend(empty)
+                csv_data['Snow on Grnd (cm)'].extend(empty)
+            if ddays(station, base)[0] is None:
+                csv_data[dd].extend(empty)
+                
             # Begin plotting processes
             if make_plots:            
                 f, axarr = plt.subplots(3, 1, sharex = True)
-            for subplot in range(3):
-                analysis = calc_that(match[0], subplot)
+            for plot in range(3):
+                analysis = calc_that(station, plot)
                 
                 if make_plots:
-                    plot_maker(analysis, axarr, subplot, subplot)
+                    plot_maker(analysis, axarr, plot, plot)
                 
                 # Grab formatted data as it is iterated over                     
                 if plot == 0:
-                    csv_data['Date'].extend(period(match)[1])    
+                    csv_data['Date'].extend(period(station)[1])    
                     if analysis[0] is None:
-                        csv_data['Min Rel Humid (%)'].extend(empty)
-                        csv_data['Max Rel Humid (%)'].extend(empty)    
+                        csv_data['Min Temp (C)'].extend(empty)
+                        csv_data['Max Temp (C)'].extend(empty)    
                     else:
-                        csv_data['Min Rel Humid (%)'].extend(analysis[1])
-                        csv_data['Max Rel Humid (%)'].extend(analysis[2])
+                        csv_data['Min Temp (C)'].extend(analysis[1])
+                        csv_data['Max Temp (C)'].extend(analysis[2])
                 if plot == 1:
                     if analysis[0] is None:
-                        csv_data['Min WCF (deg C)'].extend(empty)
-                        csv_data['Max WCF (deg C)'].extend(empty)
+                        csv_data['Total Precip (mm)'].extend(empty)
+                        csv_data['Snow on Grnd (cm)'].extend(empty)
                     else:
-                        csv_data['Min WCF (deg C)'].extend(analysis[1])
-                        csv_data['Max WCF (deg C)'].extend(analysis[2])
+                        csv_data['Total Precip (mm)'].extend(analysis[1])
+                        csv_data['Snow on Grnd (cm)'].extend(analysis[2])
                 if plot == 2:
                     if analysis[0] is None:
-                        csv_data['Min WCF (deg C)'].extend(empty)
-                        csv_data['Max WCF (deg C)'].extend(empty)
+                        csv_data[dd].extend(empty)
                     else:
-                        csv_data['Min WCF (deg C)'].extend(analysis[1])
-                        csv_data['Max WCF (deg C)'].extend(analysis[2])
+                        csv_data[dd].extend(analysis[1])
 
             if make_plots:
                 f.subplots_adjust(hspace=0.25)
-            f.text(0.5, 0.04, 'Day of Year', ha = 'center', va = 'center')
-            stationplace = match[0]['Station Name'] + ' Station'
-            f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
+                f.text(0.5, 0.04, 'Day of Year', ha = 'center', va = 'center')
+                stationplace = station['Station Name'] + ' Station'
+                f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
             
         else:
             print 'This should never happen.'
@@ -527,33 +498,29 @@ def data_unpacker(matches, base, make_plots):
     return csv_list
 
 
-
-def make_csvs(csv_list):
+def make_csvs(csv_list, base):
     """
     Writes out CSV with two headers detailing the station metadata and the
     variables being written out. If a file for an existing station exists,
     subsequent years will be appended to the file.
     """
     now = dt.now()    
+    dd = 'Deg Days > ' + str(base) + ' °C'
     
     head = ('Station Name'
+             , 'Province'
              , 'Latitude'
              , 'Longitude'
              , 'Elevation'
              , 'Climate Identifier'
              , 'WMO Identifier'
              , 'TC Identifier')
-    body = ('Date', 'Min Rel Humid (%)', 'Max Rel Humid (%)'
-            , 'Min WCF (deg C)', 'Max WCF (deg C)')
+    body = ('Date', 'Min Temp (C)', 'Max Temp (C)'
+            , 'Total Precip (mm)', 'Snow on Grnd (cm)', dd)
     
     for csv_station in csv_list:
         ident = csv_station['Climate Identifier']
         name = str(ident) + '.temp_pr_dd.' + now.strftime("%Y-%m-%d") + '.csv'
-        body = ('Date'
-                , 'Min Rel Humid (%)'
-                , 'Max Rel Humid (%)'
-                , 'Min WCF (deg C)'
-                , 'Max WCF (deg C)')
                         
         if name in os.listdir('.'):
             with codecs.open(name, 'a') as f:
@@ -596,46 +563,9 @@ def daily_stations(base, make_plots):
         locations[count].update(datum)
 
     matches = match_locations(locations)
-  
     csv_list = data_unpacker(matches, base, make_plots)
-    
-    make_csvs(csv_list)
-  
-    #Consider cleaning this up and turning this into its own function.    
-#    for match in matches:
-#        if len(match) > 1:
-#            print '\nMulti-Year Set Found; Matched as follows:'
-#            for station in match:
-#                print station['Station Name'] + ' ID ' + station['Climate Identifier'] + ' in ' + station['Year'][0]   
-#            for plot in range(3):
-#                f, axarr = plt.subplots(len(match), 1, sharex = True)
-#                for subplot, station in enumerate(match):
-#                    analysis = calc_that(station, plot)
-#                    plot_maker(analysis, axarr, subplot, plot)
-#                
-#                f.subplots_adjust(hspace=0.25)
-#                f.text(0.5, 0.04, 'Day of Year', ha = 'center', va = 'center')
-#                stationplace = match[0]['Station Name'] + ' Station'
-#                f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
-#        
-#        elif len(match) == 1:
-#            print '\nSingle Year Station Found:'
-#            print match[0]['Station Name'] + ' ID ' + match[0]['Climate Identifier'] + ' in ' + match[0]['Year'][0]
-#            f, axarr = plt.subplots(3, 1, sharex = True)
-#            for subplot in range(3):
-#                analysis = calc_that(match[0], subplot)
-#                plot_maker(analysis, axarr, subplot, subplot)
-#            
-#            f.subplots_adjust(hspace=0.25)
-#            f.text(0.5, 0.04, 'Day of Year', ha = 'center', va = 'center')
-#            stationplace = match[0]['Station Name'] + ' Station'
-#            f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
-#        else:
-#            print 'This should never happen.'
-#               
-#        plt.show()
-    
-    
+    make_csvs(csv_list, base)
+      
     return 0
 
 

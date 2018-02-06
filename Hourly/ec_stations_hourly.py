@@ -8,23 +8,45 @@ To determine the daily station statistics (unused)
         #bin_size = 24 
         #bin_layout = np.arange(humid.size)//bin_size
         #avg_humid = np.bincount(bin_layout,humid)/np.bincount(bin_layout)
+
+convert function developed by Richie Hindle
+https://stackoverflow.com/questions/1254454/fastest-way-to-convert-a-dicts-keys-values-from-unicode-to-str/1254499#1254499
 """
 import os
 import sys
-import codecs
+import codecs #Needs to be removed. Obsolete.
 import unicodecsv as csv
 import matplotlib.pyplot as plt
+import collections
 import numpy as np
 from datetime import datetime as dt
 from pdb import set_trace as stop
+
+
+def convert(data):
+    try:
+        if isinstance(data, basestring):
+            try:
+                return str(data)
+            except:
+                stop()
+                return data.encode('ascii', 'ignore')
+        elif isinstance(data, collections.Mapping):
+            return dict(map(convert, data.iteritems()))
+        elif isinstance(data, collections.Iterable):
+            return type(data)(map(convert, data))
+        else:
+            return data
+    except UnicodeEncodeError:
+        return ''
 
 
 def period(dataframe):
     """
     Determines the earliest and latest date/times and returns the length 
     of month in total number of days, accounting for leap years.
-    """ 
-    dates = np.array(dataframe['Date/Time'], dtype = 'datetime64[h]')
+    """
+    dates = np.array(dataframe['Date/Time'], dtype = 'datetime64[m]')
     min_date = np.datetime64(min(dates), dtype = 'datetime64[D]')
     max_date = np.datetime64(max(dates), dtype = 'datetime64[D]')
     month = dataframe['Month'][0]
@@ -156,17 +178,16 @@ def place_that(name):
             for count, row in enumerate(verifier):
                 if count == 0: # Special handling to deal with UTF-8 BOM
                     key = 'Station Name'
-                    field = row[1]
+                    field = convert(row[1])
                     datum[key] = field
                     continue
                 try:
                     if row[0] in names:
-                        key = row[0]
-                        field = row[1]
+                        key = convert(row[0])
+                        field = convert(row[1])
                         datum[key] = field
                 except:
                     continue
-
         return datum
     except ValueError:
         raise Exception("Invalid station CSV. \
@@ -196,9 +217,9 @@ def grab_that(station):
         reader = csv.DictReader(f, fieldnames=names, delimiter=',', quotechar='"')
         for row in reader:
             for column, value in row.iteritems():
-                value = value
+                value = convert(value)
                 datum.setdefault(column, []).append(value)
-        return datum
+    return datum
 
 
 def match_locations(locations):
@@ -239,18 +260,6 @@ def calc_that(match, plot):
     """
     location = match.copy()
 
-    for key in location: # For removing non-UTF-8 characters
-        newkey = key.encode('ascii', 'ignore')
-        location[newkey] = location.pop(key)
-        for count, val in enumerate(location[newkey]):
-            try:
-                newval = val.encode('ascii', 'ignore')
-                location[newkey][count] = newval
-            except TypeError:
-                continue
-            except AttributeError:
-                continue
-        
     # Depending on the plot type being calculated, only return the variables needed
     if plot == 0:    
         return humid(location)
@@ -327,31 +336,23 @@ def data_unpacker(matches, make_plots = True):
         elif len(match) == 1:
             print '\nSingle Month Station Found:'
             print (match[0]['Station Name'] + ' ID:' + match[0]['Climate Identifier']
-                + ' for Month ' + match['Month'][0] + ' in ' + match[0]['Year'][0])
-
-            if humid(match) is None or windchill(match) is None:
-                csv_data['Date'].extend(period(station)[1])
-                length = len(period(station)[1])
-                empty = np.ma.masked_array(np.zeros((length,)),mask=np.ones((length,)))
-            if humid(match) is None:
-                csv_data['Min Rel Humid (%)'].extend(empty)
-                csv_data['Max Rel Humid (%)'].extend(empty)
-            if windchill(match) is None:
-                csv_data['Min WCF (deg C)'].extend(empty)
-                csv_data['Max WCF (deg C)'].extend(empty)
+                + ' for Month ' + match[0]['Month'][0] + ' in ' + match[0]['Year'][0])
 
             # Begin plotting processes
             if make_plots:            
                 f, axarr = plt.subplots(3, 1, sharex = True)
-            for subplot in range(2):
-                analysis = calc_that(match[0], subplot)
+            for plot in range(2):
+                analysis = calc_that(match[0], plot)
                 
                 if make_plots:
-                    plot_maker(analysis, axarr, subplot, subplot)
+                    plot_maker(analysis, axarr, plot, plot)
+                
+                length = len(period(match[0])[1])
+                empty = np.ma.masked_array(np.zeros((length,)),mask=np.ones((length,)))
                 
                 # Grab formatted data as it is iterated over                     
                 if plot == 0:
-                    csv_data['Date'].extend(period(match)[1])    
+                    csv_data['Date'].extend(period(match[0])[1])    
                     if analysis[0] is None:
                         csv_data['Min Rel Humid (%)'].extend(empty)
                         csv_data['Max Rel Humid (%)'].extend(empty)    
@@ -436,7 +437,6 @@ def make_csvs(csv_list):
     variables being written out. If a file for an existing station exists,
     subsequent years will be appended to the file.
     """
-        
     now = dt.now()
     
     head = ('Station Name'
