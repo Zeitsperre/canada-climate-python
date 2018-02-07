@@ -37,8 +37,9 @@ def period(dataframe):
     Determines the lenth of year in days. Needed for leap-year handling.
     """
     period = np.array(dataframe['Date/Time'], dtype='datetime64[D]')
-    year = period[0].astype('datetime64[Y]').astype(int)
+    year = period[0].astype('datetime64[Y]').astype(str)
     return year, period
+
 
 def temp(dataframe):
     """
@@ -60,7 +61,7 @@ def temp(dataframe):
     min_temp_masked = np.ma.masked_where(np.isnan(min_temp), min_temp)
 
     if type(np.nansum(min_temp_masked)) != np.float64:
-        return None, 'Temperature Min/Max', year
+        return False, 'Temperature Min/Max', year
 
     for count, factor in enumerate(max_temp_raw): #Handling NoneTypes
         try:
@@ -112,11 +113,11 @@ def precip(dataframe):
 
     if type(np.nansum(tot_ppt_masked)) != np.float64 and\
         type(np.nansum(snow_masked)) != np.float64:
-        return None, key1 + ' and ' + key2, year
+        return False, key1 + ' and ' + key2, year
     elif type(np.nansum(tot_ppt_masked)) != np.float64:
-        return None, key1, year
+        return False, key1, year
     elif type(np.nansum(snow_masked)) != np.float64:
-        return None, key2, year
+        return False, key2, year
 
     y1 = tot_ppt_masked
     y2 = snow_masked
@@ -135,18 +136,21 @@ def ddays(dataframe, base = 10):
     with base 10 Celsius.
     """
     def degree_days(low, high, base):
-        dd = (((low + high) - base) / 2)
-        dd[np.where(dd<0)] = 0
-        return dd
+        try:
+            dd = (((low + high) - base) / 2)
+            dd[np.where(dd<0)] = 0
+            return dd
+        except RuntimeWarning:
+            return 0
     
-    key = 'Degree Days >' + str(base) + '°C'
+    key = 'Degree Days >' + str(base) + ' Degrees C'
     year, days = period(dataframe)
     
     if temp(dataframe)[0] is None:
-        return None, key, year
+        return False, key, year
     
-    min_temp_ma, max_temp_ma = temp(dataframe)[1,2]
-    
+    min_temp_ma, max_temp_ma = temp(dataframe)[1:3]
+
     y1 = degree_days(min_temp_ma, max_temp_ma, base)
     y2 = None
     max_daily, sum_daily = y1.max(), np.nansum(y1)
@@ -440,8 +444,8 @@ def data_unpacker(matches, base, make_plots):
             
             length = len(period(station)[1])
             empty = np.ma.masked_array(np.zeros((length,)),mask=np.ones((length,)))
-            stop()
-            if np.all(temp(station)[0], precip(station)[0], ddays(station)[0]):
+#            stop()
+            if True not in (temp(station)[0], precip(station)[0], ddays(station)[0]):
             #if temp(station)[0] is None or precip(station)[0] or ddays(station)[0] is None:
                 csv_data['Date'].extend(period(station)[1])
             if temp(station)[0] is None:
