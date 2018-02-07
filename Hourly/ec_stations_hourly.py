@@ -29,7 +29,6 @@ def convert(data):
             try:
                 return str(data)
             except:
-                stop()
                 return data.encode('ascii', 'ignore')
         elif isinstance(data, collections.Mapping):
             return dict(map(convert, data.iteritems()))
@@ -267,7 +266,7 @@ def calc_that(match, plot):
     elif plot == 1:
         return windchill(location)
     else:
-        return 'Gonna need more than that'
+        return "You need more plot styles"
 
 
 def data_unpacker(matches, make_plots = True):
@@ -375,7 +374,7 @@ def data_unpacker(matches, make_plots = True):
                 f.text(0.5, 0.96, stationplace, ha = 'center', va = 'center')
             
         else:
-            print 'This should never happen.'
+            print "This should never happen."
         csv_list.append(csv_data)
         if make_plots:
             plt.show()
@@ -426,7 +425,7 @@ def plot_maker(analysis, axarr, subplot, plot):
             axarr[subplot].text(15, -5, y2_title)
 
         else:
-            return 'You need more plot styles.'            
+            return "You need more plot styles."     
         return
     except TypeError:
         raise Exception("That didn\'t work.")
@@ -490,11 +489,11 @@ def daily_stations(make_plots):
         for f in fnames:
             place = place_that(f)
             locations.append(place)
-        print len(fnames), 'station readings gathered'
+        print len(fnames), "station readings gathered"
     else:
         place = place_that(fnames[0])
         locations.append(place)
-        print 'Single station reading gathered'
+        print "Single station reading gathered"
 
     for count, station in enumerate(fnames):
         datum = grab_that(station)
@@ -514,9 +513,9 @@ if __name__ == "__main__":
     For debugging purposes.
     """
     make_plots = False  
-    plots = raw_input('Do you want to produce plots of data? y/n [n]')
+    plots = raw_input("Do you want to produce plots of data? y/[n]")
     if plots in ('y', 'Y'):
         make_plots = True
-    print 'Making Plots!'*make_plots
+    print "Making Plots!"*make_plots
     
     daily_stations(make_plots)

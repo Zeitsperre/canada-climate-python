@@ -3,8 +3,8 @@
 # Be sure to specify the stations, years, months before launching the script
 # timeframe options are 1:Hourly, 2:Daily, 3:Monthly. These can be passed to the command with loop or specified in the wget query
 
-station_list='5389 5415 5441 5415 5406 5452 5452 5452 5452 5538 5538 5401 5322 5368 5401 5339 5368'
-year_list='2015 2016 2017'
+station_list='XXXX YYYY'
+year_list='2014 2015 2016 2017'
 month_list='1 2 3 4 5 6 7 8 9 10 11 12'
 tframe='1'
 

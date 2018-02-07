@@ -15,7 +15,9 @@ _A work in progress: run at your own risk_
 
 ## Requires
 
-Python2: collections, codecs, Matplotlib, NumPy, unicodecsv, wget 
+Python2: collections, codecs, Matplotlib, NumPy, unicodecsv
+
+Bash: wget 
 
 ## Goal
 
@@ -26,7 +28,6 @@ Python2: collections, codecs, Matplotlib, NumPy, unicodecsv, wget
 
 ## To-Do
 
-- Feature: Output dictionaries to CSV
+- ~~Feature: Output dictionaries to CSV~~
 - Python3 compatibility
-- Feature: Processing and display of Monthly station data
-- Feature: degree-days functions to allow different baselines/formulas
+- ~~Feature: degree-days functions to allow different baselines/formulas~~

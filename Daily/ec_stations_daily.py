@@ -143,14 +143,13 @@ def ddays(dataframe, base = 10):
         except RuntimeWarning:
             return 0
     
-    key = 'Degree Days >' + str(base) + ' Degrees C'
+    key = 'Degree Days >' + str(base) + ' Deg C'
     year, days = period(dataframe)
     
-    if temp(dataframe)[0] is None:
+    if temp(dataframe)[0] is False:
         return False, key, year
     
     min_temp_ma, max_temp_ma = temp(dataframe)[1:3]
-
     y1 = degree_days(min_temp_ma, max_temp_ma, base)
     y2 = None
     max_daily, sum_daily = y1.max(), np.nansum(y1)
@@ -164,12 +163,10 @@ def ddays(dataframe, base = 10):
 
 def collect_that():
     """
-    Collects all files starting with "eng-" and ending with ".csv"  
-    located in the same directory as the script. Need to consider 
-    making a method allowing for users to feed in a directory location 
-    if they want to scan a filesystem.
+    Collects all files starting with "eng-daily" that are   
+    located in the same directory as the script.
     """
-    print 'Scanning directories:\n'
+    print "Scanning directories:\n"
     ec_stations = [ec for ec in os.listdir('.')
                    if ec.startswith('eng-daily')]
     ec_stations.sort()
@@ -295,7 +292,7 @@ def calc_that(match, plot):
     elif plot == 2:
         return ddays(location)
     else:
-        return 'Gonna need more than that'
+        return "You need more plot styles."
 
 
 def plot_maker(analysis, axarr, subplot, plot):
@@ -358,7 +355,7 @@ def plot_maker(analysis, axarr, subplot, plot):
             axarr[subplot].text(15, thirdpoint/1.5, y2_title)
        
         else:
-            return 'You need more plot styles.'
+            return "You need more plot styles."
             
         return None
 
@@ -373,7 +370,7 @@ def data_unpacker(matches, base, make_plots):
     series of subplots.
     """
     csv_list = []
-    dd = 'Deg Days > ' + str(base) + ' °C'
+    dd = 'Deg Days > ' + str(base) + ' C'
     
     for match in matches:
         csv_meta = ('Station Name'
@@ -439,14 +436,13 @@ def data_unpacker(matches, base, make_plots):
         elif len(match) == 1:
             station = match[0]
             print '\nSingle Year Station Found:'
-            print station['Station Name'] + ' ID ' + station['Climate Identifier']\
-                    + ' in ' + station['Year'][0]
+            print station['Station Name'] + ' ID:' + station['Climate Identifier']\
+                    + ' for ' + station['Year'][0]
             
             length = len(period(station)[1])
             empty = np.ma.masked_array(np.zeros((length,)),mask=np.ones((length,)))
-#            stop()
+
             if True not in (temp(station)[0], precip(station)[0], ddays(station)[0]):
-            #if temp(station)[0] is None or precip(station)[0] or ddays(station)[0] is None:
                 csv_data['Date'].extend(period(station)[1])
             if temp(station)[0] is None:
                 csv_data['Min Temp (C)'].extend(empty)
@@ -509,7 +505,7 @@ def make_csvs(csv_list, base):
     subsequent years will be appended to the file.
     """
     now = dt.now()    
-    dd = 'Deg Days > ' + str(base) + ' °C'
+    dd = 'Deg Days > ' + str(base) + ' C'
     
     head = ('Station Name'
              , 'Province'
@@ -556,11 +552,11 @@ def daily_stations(base, make_plots):
         for f in fnames:
             place = place_that(f)
             locations.append(place)
-        print len(fnames), 'station readings gathered'
+        print len(fnames), "station readings gathered"
     else:
         place = place_that(fnames[0])
         locations.append(place)
-        print 'Single station reading gathered'
+        print "Single station reading gathered"
 
     for count, station in enumerate(fnames):
         datum = grab_that(station)
@@ -574,11 +570,11 @@ def daily_stations(base, make_plots):
 
 
 if __name__ == "__main__":
-    '''
+    """
     For debugging purposes.
-    '''
+    """
     try:
-        base = raw_input('What base for degree-days? [def = 10]')
+        base = raw_input("What base for degree-days?[10]")
         if type(base) not in (int, float):
             base = 10
     except:
@@ -586,9 +582,9 @@ if __name__ == "__main__":
     print 'base =', base, 'deg C'
         
     make_plots = False  
-    plots = raw_input('Do you want to produce plots of data? y/n [def = n]')
+    plots = raw_input("Do you want to produce plots of data? y/[n]")
     if plots in ('y', 'Y'):
         make_plots = True
-    print 'Making Plots!'*make_plots
+    print "Making Plots!"*make_plots
     
     daily_stations(base, make_plots)
