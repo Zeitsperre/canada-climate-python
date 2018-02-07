@@ -46,11 +46,12 @@ def period(dataframe):
     Determines the earliest and latest date/times and returns the length 
     of month in total number of days, accounting for leap years.
     """
-    dates = np.array(dataframe['Date/Time'], dtype = 'datetime64[m]')
+    dates = np.array(dataframe['Date/Time'], dtype = 'datetime64[h]')
     min_date = np.datetime64(min(dates), dtype = 'datetime64[D]')
     max_date = np.datetime64(max(dates), dtype = 'datetime64[D]')
     month = dataframe['Month'][0]
     period = np.arange(min_date, max_date+1, dtype = 'datetime64[D]')
+
     return month, period
 
 
