@@ -72,7 +72,7 @@ def humid(dataframe):
     humid_hourly = np.ma.masked_where(np.isnan(humid_hourly), humid_hourly)
 
     if type(np.nansum(humid_hourly)) != np.float64:
-        return None, key, month
+        return False, key, month
     
     humid_daily = humid_hourly.reshape(len(humid_hourly)/24, 24)
     min_humid = np.amin(humid_daily, axis = 1)
@@ -109,7 +109,7 @@ def windchill(dataframe):
     wcf_hourly = np.ma.masked_where(np.isnan(wcf_hourly), wcf_hourly)
 
     if type(np.nansum(wcf_hourly)) != np.float64:
-        return None, key, month
+        return False, key, month
             
     wcf_daily = wcf_hourly.reshape(len(wcf_hourly)/24, 24)
     min_wcf = np.amin(wcf_daily, axis = 1)
@@ -313,14 +313,14 @@ def data_unpacker(matches, make_plots = True):
                     # Grab formatted data as it is iterated over                          
                     if plot == 0:                     
                         csv_data['Date'].extend(period(station)[1])
-                        if analysis[0] is None:
+                        if analysis[0] is False:
                             csv_data['Min Rel Humid (%)'].extend(empty)
                             csv_data['Max Rel Humid (%)'].extend(empty)    
                         else:
                             csv_data['Min Rel Humid (%)'].extend(analysis[1])
                             csv_data['Max Rel Humid (%)'].extend(analysis[2])
                     if plot == 1:
-                        if analysis[0] is None:
+                        if analysis[0] is False:
                             csv_data['Min WCF (deg C)'].extend(empty)
                             csv_data['Max WCF (deg C)'].extend(empty)
                         else:
@@ -353,14 +353,14 @@ def data_unpacker(matches, make_plots = True):
                 # Grab formatted data as it is iterated over                     
                 if plot == 0:
                     csv_data['Date'].extend(period(match[0])[1])    
-                    if analysis[0] is None:
+                    if analysis[0] is False:
                         csv_data['Min Rel Humid (%)'].extend(empty)
                         csv_data['Max Rel Humid (%)'].extend(empty)    
                     else:
                         csv_data['Min Rel Humid (%)'].extend(analysis[1])
                         csv_data['Max Rel Humid (%)'].extend(analysis[2])
                 if plot == 1:
-                    if analysis[0] is None:
+                    if analysis[0] is False:
                         csv_data['Min WCF (deg C)'].extend(empty)
                         csv_data['Max WCF (deg C)'].extend(empty)
                     else:

@@ -142,7 +142,8 @@ def ddays(dataframe, base = 10):
             return dd
         except RuntimeWarning:
             return 0
-    
+#    if dataframe['Climate Identifier'] == '7027329':
+#        stop()
     key = 'Degree Days >' + str(base) + ' Deg C'
     year, days = period(dataframe)
     
@@ -408,21 +409,21 @@ def data_unpacker(matches, base, make_plots):
                     # Grab formatted data as it is iterated over                          
                     if plot == 0:                     
                         csv_data['Date'].extend(period(station)[1])
-                        if analysis[0] is None:
+                        if analysis[0] is False:
                             csv_data['Min Temp (C)'].extend(empty)
                             csv_data['Max Temp (C)'].extend(empty)    
                         else:
                             csv_data['Min Temp (C)'].extend(analysis[1])
                             csv_data['Max Temp (C)'].extend(analysis[2])
                     if plot == 1:
-                        if analysis[0] is None:
+                        if analysis[0] is False:
                             csv_data['Total Precip (mm)'].extend(empty)
                             csv_data['Snow on Grnd (cm)'].extend(empty)
                         else:
                             csv_data['Total Precip (mm)'].extend(analysis[1])
                             csv_data['Snow on Grnd (cm)'].extend(analysis[2])
                     if plot == 2:
-                        if analysis[0] is None:
+                        if analysis[0] is False:
                             csv_data[dd].extend(empty)
                         else:
                             csv_data[dd].extend(analysis[1])
@@ -444,13 +445,13 @@ def data_unpacker(matches, base, make_plots):
 
             if True not in (temp(station)[0], precip(station)[0], ddays(station)[0]):
                 csv_data['Date'].extend(period(station)[1])
-            if temp(station)[0] is None:
+            if temp(station)[0] is False:
                 csv_data['Min Temp (C)'].extend(empty)
                 csv_data['Max Temp (C)'].extend(empty)
-            if precip(station)[0] is None:
+            if precip(station)[0] is False:
                 csv_data['Total Precip (mm)'].extend(empty)
                 csv_data['Snow on Grnd (cm)'].extend(empty)
-            if ddays(station, base)[0] is None:
+            if ddays(station, base)[0] is False:
                 csv_data[dd].extend(empty)
                 
             # Begin plotting processes
@@ -465,21 +466,21 @@ def data_unpacker(matches, base, make_plots):
                 # Grab formatted data as it is iterated over                     
                 if plot == 0:
                     csv_data['Date'].extend(period(station)[1])    
-                    if analysis[0] is None:
+                    if analysis[0] is False:
                         csv_data['Min Temp (C)'].extend(empty)
                         csv_data['Max Temp (C)'].extend(empty)    
                     else:
                         csv_data['Min Temp (C)'].extend(analysis[1])
                         csv_data['Max Temp (C)'].extend(analysis[2])
                 if plot == 1:
-                    if analysis[0] is None:
+                    if analysis[0] is False:
                         csv_data['Total Precip (mm)'].extend(empty)
                         csv_data['Snow on Grnd (cm)'].extend(empty)
                     else:
                         csv_data['Total Precip (mm)'].extend(analysis[1])
                         csv_data['Snow on Grnd (cm)'].extend(analysis[2])
                 if plot == 2:
-                    if analysis[0] is None:
+                    if analysis[0] is False:
                         csv_data[dd].extend(empty)
                     else:
                         csv_data[dd].extend(analysis[1])
