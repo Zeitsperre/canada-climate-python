@@ -7,7 +7,8 @@ _A work in progress: run at your own risk_
 ---
 ## Features
 
-- Downloading of weather station data using the Environment Canada FTP (<ftp://ftp.tor.ec.gc.ca/Pub/Get_More_Data_Plus_de_donnees/Readme.txt>) and wget.
+- Downloading of weather station data using the Environment Canada FTP (<ftp://ftp.tor.ec.gc.ca/Pub/Get_More_Data_Plus_de_donnees/Readme.txt>) and wget. 
+_Due to the FTP being down, the Station Inventory in CSV and SHP as of 2018 is now included_
 
 - Outputting of continuous station data according to date/time for several environmental indicators for Hourly and Daily data.
 
@@ -22,12 +23,12 @@ Bash: wget
 ## Goal
 
 - Automatic downloading of nearest station data to point of interest or boundary box (will require geoprocessing tools)
-- ~~Selectable years for daily data sets~~
 - Outputting of new data frames as SQL-loadable databases (Further research needed)
 - ~~Outputting of daily data subplot figures based on number of years collected~~
+- ~~Selectable years for daily data sets~~
 
 ## To-Do
 
-- ~~Feature: Output dictionaries to CSV~~
 - Python3 compatibility
+- ~~Feature: Output dictionaries to CSV~~
 - ~~Feature: degree-days functions to allow different baselines/formulas~~
