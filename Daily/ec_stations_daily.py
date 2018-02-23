@@ -194,6 +194,7 @@ def place_that(name):
                     break
             f.seek(0)
             names = ('Station Name'
+                     , 'Province'
                      , 'Latitude'
                      , 'Longitude'
                      , 'Elevation'
@@ -375,6 +376,7 @@ def data_unpacker(matches, base, make_plots):
     
     for match in matches:
         csv_meta = ('Station Name'
+                     , 'Province'
                      , 'Latitude'
                      , 'Longitude'
                      , 'Elevation'
@@ -507,7 +509,6 @@ def make_csvs(csv_list, base):
     """
     now = dt.now()    
     dd = 'Deg Days > ' + str(base) + ' C'
-    
     head = ('Station Name'
              , 'Province'
              , 'Latitude'
@@ -566,7 +567,8 @@ def daily_stations(base, make_plots):
     matches = match_locations(locations)
     csv_list = data_unpacker(matches, base, make_plots)
     make_csvs(csv_list, base)
-      
+    
+    print 'Done!'
     return 0
 
 

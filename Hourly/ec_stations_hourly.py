@@ -476,7 +476,7 @@ def make_csvs(csv_list):
                 list_writer.writerows(zip(*[csv_station[key] for key in body]))
 
 
-def daily_stations(make_plots):
+def hourly_stations(make_plots):
     """
     The main script that calls other methods; Odd calls and methods that are
     yet to be integrated are placed here to ensure script methods can be run to
@@ -500,9 +500,7 @@ def daily_stations(make_plots):
         locations[count].update(datum)
 
     matches = match_locations(locations)
- 
     csv_list = data_unpacker(matches, make_plots)
-
     make_csvs(csv_list)   
 
     print 'Done!'
@@ -518,4 +516,4 @@ if __name__ == "__main__":
         make_plots = True
     print "Making Plots!"*make_plots
     
-    daily_stations(make_plots)
+    hourly_stations(make_plots)
