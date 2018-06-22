@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Be sure to specify the stations, years, months before launching the script
-# timeframe options are 1:Hourly, 2:Daily, 3:Monthly. These can be passed to the command with loop or specified in the wget query
+# timeframe options are 1:hourly, 2:daily, 3:monthly. These can be passed to the command with loop or specified in the wget query
 
 station_list='XXXX YYYY'
 year_list='2014 2015 2016 2017'
