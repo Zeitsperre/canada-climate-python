@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-convert function developed by Richie Hindle
-https://stackoverflow.com/questions/1254454/fastest-way-to-convert-a-dicts-keys-values-from-unicode-to-str/1254499#1254499
-"""
 
 import codecs  # Needs to be removed. Obsolete.
 import collections
 import os
-import sys
 from datetime import datetime as dt
 
 import matplotlib.pyplot as plt
@@ -21,7 +16,8 @@ def convert(data):
         if isinstance(data, basestring):
             try:
                 return str(data)
-            except:
+            except Exception as e:
+                print(e)
                 return data.encode('ascii', 'ignore')
         elif isinstance(data, collections.Mapping):
             return dict(map(convert, data.iteritems()))
@@ -57,7 +53,7 @@ def humid(dataframe):
     humid_raw = dataframe[key]
     for count, factor in enumerate(humid_raw):  # Handling NoneTypes
         try:
-            factor = float(factor)
+            float(factor)
         except (TypeError, ValueError):
             humid_raw[count] = 'NaN'
 
@@ -94,7 +90,7 @@ def windchill(dataframe):
     wcf_raw = dataframe[key]
     for count, factor in enumerate(wcf_raw):  # Handling those annoying NoneTypes
         try:
-            factor = float(factor)
+            float(factor)
         except (TypeError, ValueError):
             wcf_raw[count] = 'NaN'
 
@@ -138,7 +134,6 @@ def collect_that():
         return ec_stations
     else:
         raise Exception("No stations were collected. Verify CSV locations.")
-        sys.exit()
 
 
 def place_that(name):
@@ -157,14 +152,14 @@ def place_that(name):
                 if count > 6:
                     break
             f.seek(0)
-            names = ('Station Name'
-                     , 'Province'
-                     , 'Latitude'
-                     , 'Longitude'
-                     , 'Elevation'
-                     , 'Climate Identifier'
-                     , 'WMO Identifier'
-                     , 'TC Identifier')
+            names = ('Station Name',
+                     'Province',
+                     'Latitude',
+                     'Longitude',
+                     'Elevation',
+                     'Climate Identifier',
+                     'WMO Identifier',
+                     'TC Identifier')
             datum = {}
             for name in names:
                 datum[name] = []
@@ -180,8 +175,10 @@ def place_that(name):
                         key = convert(row[0])
                         field = convert(row[1])
                         datum[key] = field
-                except:
+                except Exception as e:
+                    print e
                     continue
+
         return datum
     except ValueError:
         raise Exception("Invalid station CSV. \
@@ -265,7 +262,7 @@ def calc_that(match, plot):
         return "You need more plot styles"
 
 
-def data_unpacker(matches, make_plots=True):
+def data_unpacker(matches, make):
     """
     Unpacks the matches and match data to return continuous data
     that will be appended to CSVs. If make_plots == True, will create a
@@ -274,14 +271,14 @@ def data_unpacker(matches, make_plots=True):
     csv_list = []
 
     for match in matches:
-        csv_meta = ('Station Name'
-                    , 'Province'
-                    , 'Latitude'
-                    , 'Longitude'
-                    , 'Elevation'
-                    , 'Climate Identifier'
-                    , 'WMO Identifier'
-                    , 'TC Identifier')
+        csv_meta = ('Station Name',
+                    'Province',
+                    'Latitude',
+                    'Longitude',
+                    'Elevation',
+                    'Climate Identifier',
+                    'WMO Identifier',
+                    'TC Identifier')
         csv_data = {'Date': [], 'Min Rel Humid (%)': [], 'Max Rel Humid (%)': [],
                     'Min WCF (deg C)': [], 'Max WCF (deg C)': []}
         for keys in csv_meta:
@@ -294,14 +291,14 @@ def data_unpacker(matches, make_plots=True):
                 print(station['Station Name'] + ' ID:' + station['Climate Identifier']
                       + ' for Month ' + station['Month'][0] + ' in ' + station['Year'][0])
 
-            # Begin subplotting processes
+            # Begin sub-plotting processes
             for plot in range(2):
-                if make_plots:
+                if make:
                     f, axarr = plt.subplots(len(match), 1, sharex=True)
                 for subplot, station in enumerate(match):
                     analysis = calc_that(station, plot)
 
-                    if make_plots:
+                    if make:
                         plot_maker(analysis, axarr, subplot, plot)
 
                     length = len(period(station)[1])
@@ -324,25 +321,24 @@ def data_unpacker(matches, make_plots=True):
                             csv_data['Min WCF (deg C)'].extend(analysis[1])
                             csv_data['Max WCF (deg C)'].extend(analysis[2])
 
-                if make_plots:
+                if make:
                     f.subplots_adjust(hspace=0.5)
                     f.text(0.5, 0.04, 'Day in Month', ha='center', va='center')
-                    stationplace = match[0]['Station Name'] + ' Station for Year ' + match[0]['Year'][0]
-                    f.text(0.5, 0.96, stationplace, ha='center', va='center')
+                    station_place = match[0]['Station Name'] + ' Station for Year ' + match[0]['Year'][0]
+                    f.text(0.5, 0.96, station_place, ha='center', va='center')
 
         elif len(match) == 1:
-            print
-            '\nSingle Month Station Found:'
+            print '\nSingle Month Station Found:'
             print(match[0]['Station Name'] + ' ID:' + match[0]['Climate Identifier']
                   + ' for Month ' + match[0]['Month'][0] + ' in ' + match[0]['Year'][0])
 
             # Begin plotting processes
-            if make_plots:
+            if make:
                 f, axarr = plt.subplots(3, 1, sharex=True)
             for plot in range(2):
                 analysis = calc_that(match[0], plot)
 
-                if make_plots:
+                if make:
                     plot_maker(analysis, axarr, plot, plot)
 
                 length = len(period(match[0])[1])
@@ -365,17 +361,17 @@ def data_unpacker(matches, make_plots=True):
                         csv_data['Min WCF (deg C)'].extend(analysis[1])
                         csv_data['Max WCF (deg C)'].extend(analysis[2])
 
-            if make_plots:
+            if make:
                 f.subplots_adjust(hspace=0.25)
                 f.text(0.5, 0.04, 'Day in Month', ha='center', va='center')
-                stationplace = match[0]['Station Name'] + ' Station for Year ' + match[0]['Year'][0]
-                f.text(0.5, 0.96, stationplace, ha='center', va='center')
+                station_place = match[0]['Station Name'] + ' Station for Year ' + match[0]['Year'][0]
+                f.text(0.5, 0.96, station_place, ha='center', va='center')
 
         else:
             print
             "This should never happen."
         csv_list.append(csv_data)
-        if make_plots:
+        if make:
             plt.show()
     return csv_list
 
@@ -389,8 +385,7 @@ def plot_maker(analysis, axarr, subplot, plot):
     try:
         days, y1, y2, month, title, y1_label, y2_label, y1_title, y2_title = analysis
     except (TypeError, ValueError):
-        print
-        analysis[1] + " for Month " + analysis[2] + " is being skipped"
+        print analysis[1] + " for Month " + analysis[2] + " is being skipped"
         return
 
     # General plot elements
@@ -439,25 +434,20 @@ def make_csvs(csv_list):
     """
     now = dt.now()
 
-    head = ('Station Name'
-            , 'Province'
-            , 'Latitude'
-            , 'Longitude'
-            , 'Elevation'
-            , 'Climate Identifier'
-            , 'WMO Identifier'
-            , 'TC Identifier')
-    body = ('Date', 'Min Rel Humid (%)', 'Max Rel Humid (%)'
-            , 'Min WCF (deg C)', 'Max WCF (deg C)')
+    head = ('Station Name',
+            'Province',
+            'Latitude',
+            'Longitude',
+            'Elevation',
+            'Climate Identifier',
+            'WMO Identifier',
+            'TC Identifier')
+
+    body = ('Date', 'Min Rel Humid (%)', 'Max Rel Humid (%)', 'Min WCF (deg C)', 'Max WCF (deg C)')
 
     for csv_station in csv_list:
         ident = csv_station['Climate Identifier']
         name = str(ident) + '_humid_wcf.' + now.strftime("%Y-%m-%d") + '.csv'
-        body = ('Date'
-                , 'Min Rel Humid (%)'
-                , 'Max Rel Humid (%)'
-                , 'Min WCF (deg C)'
-                , 'Max WCF (deg C)')
 
         if name in os.listdir('.'):
             with codecs.open(name, 'a') as f:
@@ -476,7 +466,7 @@ def make_csvs(csv_list):
                 list_writer.writerows(zip(*[csv_station[key] for key in body]))
 
 
-def hourly_stations(make_plots):
+def hourly_stations(make):
     """
     The main script that calls other methods; Odd calls and methods that are
     yet to be integrated are placed here to ensure script methods can be run to
@@ -502,7 +492,7 @@ def hourly_stations(make_plots):
         locations[count].update(datum)
 
     matches = match_locations(locations)
-    csv_list = data_unpacker(matches, make_plots)
+    csv_list = data_unpacker(matches, make)
     make_csvs(csv_list)
 
     print
@@ -518,7 +508,6 @@ if __name__ == "__main__":
     plots = raw_input("Do you want to produce plots of data? y/[n]")
     if plots in ('y', 'Y'):
         make_plots = True
-    print
-    "Making Plots!" * make_plots
+    print "Making Plots!" * make_plots
 
     hourly_stations(make_plots)

@@ -1,5 +1,6 @@
 eng-hourly*
 eng-daily*
-*.csv
+hourly/*.csv
+daily/*.csv
 .idea
 venv
