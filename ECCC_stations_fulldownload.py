@@ -1,3 +1,5 @@
+#!/bin/env python3
+
 import os
 from ftplib import FTP
 
@@ -25,8 +27,11 @@ def main():
     # import station inventory as pandas DataFrame
     stats = pd.read_csv(os.path.join(output_dir, filename), header=3)
 
-    download_hourly(stats, output_dir)
-    download_daily(stats, output_dir)
+    try:
+        download_hourly(stats, output_dir)
+        download_daily(stats, output_dir)
+    except Exception as e:
+        raise Exception(e)
 
 
 def download_hourly(stats, outputdir):
@@ -35,11 +40,11 @@ def download_hourly(stats, outputdir):
     time_step = 'HLY'
 
     for d, _ in enumerate(stats['Name']):
-        firstyear = stats[time_step + ' First Year'][d]
-        lastyear = stats[time_step + ' Last Year'][d]
+        first_year = stats[time_step + ' First Year'][d]
+        last_year = stats[time_step + ' Last Year'][d]
 
         # check that station has a first and last year value for DLY time step
-        if not np.isnan(firstyear) and not np.isnan(lastyear):
+        if not np.isnan(first_year) and not np.isnan(last_year):
 
             # remove special chars in name
             rep = {'\\': '_', '/': '_', ' ': '_'}
@@ -49,22 +54,22 @@ def download_hourly(stats, outputdir):
 
             # output variables
             province = '_'.join(stats["Province"][d].split())
-            climateid = stats['Climate ID'][d]
-            stationid = stats['Station ID'][d]
-            folderid = '_'.join([climateid, name])
+            climate_id = stats['Climate ID'][d]
+            station_id = stats['Station ID'][d]
+            folder_id = '_'.join([climate_id, name])
 
             # make directory
-            repo = os.path.join(outputdir, 'HLY', province, folderid)
+            repo = os.path.join(outputdir, 'HLY', province, folder_id)
             os.makedirs(repo, exist_ok=True)
 
-            for yyyy in range(int(firstyear), int(lastyear + 1)):
-                for mm in range(1, 13):
+            for year in range(int(first_year), int(last_year + 1)):
+                for month in range(1, 13):
                     base_url = 'http://climate.weather.gc.ca/climate_data/bulk_data_e.html?format=csv&' \
                                'stationID={0}&Year={1}&Month={2}&timeframe={3}&submit= Download+Data'
-                    url = base_url.format(stationid, yyyy, mm, time_frame)
+                    url = base_url.format(station_id, year, month, time_frame)
                     r = requests.get(url)
-                    fname = '_'.join([climateid, name, str(yyyy), str(mm).zfill(2), time_step])
-                    outfile = os.path.join(repo, '.'.join([fname, 'csv']))
+                    filename = '_'.join([climate_id, name, str(year), str(month).zfill(2), time_step])
+                    outfile = os.path.join(repo, '.'.join([filename, 'csv']))
 
                     with open(outfile, 'wb') as f:
                         f.write(r.content)
@@ -76,11 +81,11 @@ def download_daily(stats, output_dir):
     time_step = 'DLY'
 
     for d, _ in enumerate(stats['Name']):
-        firstyear = stats[time_step + ' First Year'][d]
-        lastyear = stats[time_step + ' Last Year'][d]
+        first_year = stats[time_step + ' First Year'][d]
+        last_year = stats[time_step + ' Last Year'][d]
 
         # check that station has a first and last year value for DLY time step
-        if not np.isnan(firstyear) and not np.isnan(lastyear):
+        if not np.isnan(first_year) and not np.isnan(last_year):
 
             # remove special chars in name
             rep = {'\\': '_', '/': '_', ' ': '_'}
@@ -90,21 +95,21 @@ def download_daily(stats, output_dir):
 
             # output variables
             province = '_'.join(stats["Province"][d].split())
-            climateid = stats['Climate ID'][d]
-            stationid = stats['Station ID'][d]
-            folderid = '_'.join([climateid, name])
+            climate_id = stats['Climate ID'][d]
+            station_id = stats['Station ID'][d]
+            folder_id = '_'.join([climate_id, name])
 
             # make a directory
-            repo = os.path.join(output_dir, 'DLY', province, folderid)
+            repo = os.path.join(output_dir, 'DLY', province, folder_id)
             os.makedirs(repo, exist_ok=True)
 
             # loop through years and download
-            for yyyy in range(int(firstyear), int(lastyear + 1)):
+            for year in range(int(first_year), int(last_year + 1)):
                 base_url = 'http://climate.weather.gc.ca/climate_data/bulk_data_e.html?format=csv&' \
                            'stationID={0}&Year={1}&Month={2}&timeframe={3}&submit= Download+Data'
-                url = base_url.format(stationid, yyyy, str(1), time_frame)
+                url = base_url.format(station_id, year, str(1), time_frame)
                 r = requests.get(url)
-                filename = '_'.join([climateid, name, str(yyyy), time_step])
+                filename = '_'.join([climate_id, name, str(year), time_step])
                 outfile = os.path.join(repo, '.'.join([filename, 'csv']))
 
                 with open(outfile, 'wb') as f:

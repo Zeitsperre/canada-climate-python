@@ -173,14 +173,14 @@ def place_that(name):
                 if count > 6:
                     break
             f.seek(0)
-            names = ('Station Name'
-                     , 'Province'
-                     , 'Latitude'
-                     , 'Longitude'
-                     , 'Elevation'
-                     , 'Climate Identifier'
-                     , 'WMO Identifier'
-                     , 'TC Identifier')
+            names = ('Station Name',
+                     'Province',
+                     'Latitude',
+                     'Longitude',
+                     'Elevation',
+                     'Climate Identifier',
+                     'WMO Identifier',
+                     'TC Identifier')
             datum = {}
             for name in names:
                 datum[name] = []
@@ -359,14 +359,14 @@ def data_unpacker(matches, base, plots):
     dd = 'Deg Days > ' + str(base) + ' °C'
 
     for match in matches:
-        csv_meta = ('Station Name'
-                    , 'Province'
-                    , 'Latitude'
-                    , 'Longitude'
-                    , 'Elevation'
-                    , 'Climate Identifier'
-                    , 'WMO Identifier'
-                    , 'TC Identifier')
+        csv_meta = ('Station Name',
+                    'Province',
+                    'Latitude',
+                    'Longitude',
+                    'Elevation',
+                    'Climate Identifier',
+                    'WMO Identifier',
+                    'TC Identifier')
         csv_data = {'Date': [], 'Min Temp (°C)': [], 'Max Temp (°C)': [],
                     'Total Precip (mm)': [], 'Snow on Grnd (cm)': [], dd: []}
         for keys in csv_meta:
@@ -495,16 +495,16 @@ def make_csvs(csv_list, base):
     """
     now = dt.now()
     dd = 'Deg Days > ' + str(base) + ' °C'
-    head = ('Station Name'
-            , 'Province'
-            , 'Latitude'
-            , 'Longitude'
-            , 'Elevation'
-            , 'Climate Identifier'
-            , 'WMO Identifier'
-            , 'TC Identifier')
-    body = ('Date', 'Min Temp (°C)', 'Max Temp (°C)'
-            , 'Total Precip (mm)', 'Snow on Grnd (cm)', dd)
+    head = ('Station Name',
+            'Province',
+            'Latitude',
+            'Longitude',
+            'Elevation',
+            'Climate Identifier',
+            'WMO Identifier',
+            'TC Identifier')
+    body = ('Date', 'Min Temp (°C)', 'Max Temp (°C)',
+            'Total Precip (mm)', 'Snow on Grnd (cm)', dd)
 
     for csv_station in csv_list:
         ident = csv_station['Climate Identifier']
