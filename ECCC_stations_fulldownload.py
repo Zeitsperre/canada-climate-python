@@ -6,6 +6,8 @@ from ftplib import FTP
 import numpy as np
 import pandas as pd
 import requests
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 
 
 def main():
@@ -23,12 +25,16 @@ def main():
     # Download station inventory info
     filename = "Station Inventory EN.csv"
     ftp.retrbinary("RETR " + filename, open(os.path.join(output_dir, filename), 'wb').write)
+    print('Downloaded Station Inventory')
 
     # import station inventory as pandas DataFrame
     stats = pd.read_csv(os.path.join(output_dir, filename), header=3)
 
     try:
+        print('Starting hourly download...')
         download_hourly(stats, output_dir)
+
+        print('Starting daily download...')
         download_daily(stats, output_dir)
     except Exception as e:
         raise Exception(e)
@@ -38,6 +44,9 @@ def download_hourly(stats, outputdir):
     # get daily station data
     time_frame = '1'  # Corresponding code for hourly from readme info
     time_step = 'HLY'
+    s = requests.Session()
+    retries = Retry(total=10, connect=5, read=5)
+    s.mount('http://', HTTPAdapter(max_retries=retries))
 
     for d, _ in enumerate(stats['Name']):
         first_year = stats[time_step + ' First Year'][d]
@@ -67,18 +76,28 @@ def download_hourly(stats, outputdir):
                     base_url = 'http://climate.weather.gc.ca/climate_data/bulk_data_e.html?format=csv&' \
                                'stationID={0}&Year={1}&Month={2}&timeframe={3}&submit= Download+Data'
                     url = base_url.format(station_id, year, month, time_frame)
-                    r = requests.get(url)
+
                     filename = '_'.join([climate_id, name, str(year), str(month).zfill(2), time_step])
                     outfile = os.path.join(repo, '.'.join([filename, 'csv']))
+                    exists = os.path.isfile(outfile)
 
-                    with open(outfile, 'wb') as f:
-                        f.write(r.content)
+                    if exists:
+                        print(outfile + ': Exists! Skipping...')
+                    else:
+                        print(url)
+
+                        r = s.get(url, timeout=60)
+                        with open(outfile, 'wb') as f:
+                            f.write(r.content)
 
 
 def download_daily(stats, output_dir):
     # get daily station data
     time_frame = '2'  # Corresponding code for daily from readme info
     time_step = 'DLY'
+    s = requests.Session()
+    retries = Retry(total=10, connect=5, read=5)
+    s.mount('http://', HTTPAdapter(max_retries=retries))
 
     for d, _ in enumerate(stats['Name']):
         first_year = stats[time_step + ' First Year'][d]
@@ -108,12 +127,20 @@ def download_daily(stats, output_dir):
                 base_url = 'http://climate.weather.gc.ca/climate_data/bulk_data_e.html?format=csv&' \
                            'stationID={0}&Year={1}&Month={2}&timeframe={3}&submit= Download+Data'
                 url = base_url.format(station_id, year, str(1), time_frame)
-                r = requests.get(url)
+
                 filename = '_'.join([climate_id, name, str(year), time_step])
                 outfile = os.path.join(repo, '.'.join([filename, 'csv']))
+                exists = os.path.isfile(outfile)
 
-                with open(outfile, 'wb') as f:
-                    f.write(r.content)
+                if exists:
+                    print(outfile + ': Exists! Skipping...')
+                else:
+                    print(url)
+
+                    r = s.get(url, timeout=60)
+
+                    with open(outfile, 'wb') as f:
+                        f.write(r.content)
 
 
 if __name__ == '__main__':
